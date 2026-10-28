@@ -15,7 +15,7 @@ export class App implements OnInit {
   private api = inject(ApiService);
   private router = inject(Router);
 
-  protected readonly title = signal('BrandGuard AI');
+  readonly title = signal('BrandGuard AI');
   protected readonly backendOnline = signal<boolean>(true);
   protected readonly latestSubmissionId = signal<string | null>(null);
   protected readonly searchQuery = signal<string>('');

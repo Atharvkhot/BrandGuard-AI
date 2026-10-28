@@ -13,14 +13,14 @@ import {
   ReviewHistoryItemDto,
   DashboardStatsDto
 } from '../models/brandguard.models';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ApiService {
   private http = inject(HttpClient);
-  // Default to relative or port 5000 / localhost
-  private readonly baseUrl = 'http://localhost:5000/api';
+  private readonly baseUrl = environment.apiUrl;
 
   // --- Dashboard ---
   getDashboardStats(): Observable<DashboardStatsDto> {
