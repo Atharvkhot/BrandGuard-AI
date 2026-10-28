@@ -1,0 +1,106 @@
+<div class="review-history-page">
+  <!-- Page Header Row -->
+  <div class="section-header-row">
+    <div class="header-left">
+      <h2 class="section-title">Review Decision Audit History</h2>
+      <p class="section-subtitle">Immutable governance log of all human reviewer decisions permanently recorded in the database</p>
+    </div>
+
+    <!-- Filter Buttons -->
+    <div class="header-actions">
+      <div class="btn-group btn-group-sm">
+        <button class="btn" [ngClass]="selectedFilter() === 'ALL' ? 'btn-dark' : 'btn-outline-secondary'"
+                (click)="selectedFilter.set('ALL')">All ({{ history().length }})</button>
+        <button class="btn" [ngClass]="selectedFilter() === 'APPROVED' ? 'btn-success' : 'btn-outline-success'"
+                (click)="selectedFilter.set('APPROVED')">Approved</button>
+        <button class="btn" [ngClass]="selectedFilter() === 'CHANGESREQUESTED' ? 'btn-warning' : 'btn-outline-warning'"
+                (click)="selectedFilter.set('CHANGESREQUESTED')">Changes Req.</button>
+        <button class="btn" [ngClass]="selectedFilter() === 'REJECTED' ? 'btn-danger' : 'btn-outline-danger'"
+                (click)="selectedFilter.set('REJECTED')">Rejected</button>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="errorMessage()" class="alert alert-danger shadow-sm">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ errorMessage() }}
+  </div>
+
+  <div class="bg-white rounded-3 border shadow-sm overflow-hidden">
+    <div *ngIf="loading()" class="text-center py-5">
+      <div class="spinner-border text-warning" role="status"></div>
+      <div class="text-muted small mt-2">Loading audit history from database...</div>
+    </div>
+
+    <div *ngIf="!loading() && filteredHistory().length === 0" class="text-center py-5">
+      <i class="bi bi-clock-history fs-1 text-muted opacity-50"></i>
+      <h6 class="fw-bold text-muted mt-2">No review decisions found</h6>
+      <p class="text-muted small mb-3">When human reviewers make decisions on marketing submissions, they will be logged here.</p>
+      <a routerLink="/submit" class="btn-orange-primary">Submit Content for Review</a>
+    </div>
+
+    <div *ngIf="!loading() && filteredHistory().length > 0" class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light text-muted small text-uppercase">
+          <tr>
+            <th class="ps-4">Content & Campaign</th>
+            <th>Reviewer</th>
+            <th>Decision</th>
+            <th>Risk Level</th>
+            <th>Editorial Comments</th>
+            <th>Timestamp</th>
+            <th class="text-end pe-4">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="small">
+          <tr *ngFor="let item of filteredHistory()">
+            <td class="ps-4">
+              <div class="fw-bold text-dark">{{ item.contentTitle }}</div>
+              <div class="text-muted small">{{ item.contentType }}</div>
+            </td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="avatar-circle">{{ item.reviewerName | slice:0:1 | uppercase }}</div>
+                <span class="fw-semibold text-dark">{{ item.reviewerName }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="badge" [ngClass]="{
+                'bg-success-subtle text-success border border-success-subtle': item.decision === 'Approved',
+                'bg-warning-subtle text-warning border border-warning-subtle': item.decision === 'ChangesRequested',
+                'bg-danger-subtle text-danger border border-danger-subtle': item.decision === 'Rejected'
+              }">
+                <i class="bi" [ngClass]="{
+                  'bi-check-circle-fill me-1': item.decision === 'Approved',
+                  'bi-pencil-square me-1': item.decision === 'ChangesRequested',
+                  'bi-x-circle-fill me-1': item.decision === 'Rejected'
+                }"></i>
+                {{ item.decision === 'ChangesRequested' ? 'Changes Req.' : item.decision }}
+              </span>
+            </td>
+            <td>
+              <span *ngIf="item.overallRiskLevel" class="badge-severity" [ngClass]="{
+                'severity-high': item.overallRiskLevel === 'High',
+                'severity-medium': item.overallRiskLevel === 'Medium',
+                'severity-low': item.overallRiskLevel === 'Low'
+              }">
+                {{ item.overallRiskLevel }}
+              </span>
+              <span *ngIf="!item.overallRiskLevel" class="text-muted small">—</span>
+            </td>
+            <td class="small text-dark" style="max-width: 280px;">
+              <div class="text-truncate" [title]="item.comments">{{ item.comments || '—' }}</div>
+            </td>
+            <td class="small text-muted font-monospace">
+              {{ item.reviewedAt | date:'medium' }}
+            </td>
+            <td class="text-end pe-4">
+              <a [routerLink]="['/results', item.contentSubmissionId]" class="btn btn-sm btn-white-secondary">
+                <i class="bi bi-eye"></i> View Run
+              </a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

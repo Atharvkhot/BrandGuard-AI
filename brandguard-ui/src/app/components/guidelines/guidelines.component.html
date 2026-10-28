@@ -1,0 +1,169 @@
+<div class="guidelines-page">
+  <!-- Page Header Row -->
+  <div class="section-header-row">
+    <div class="header-left">
+      <h2 class="section-title">Brand Guidelines Management</h2>
+      <p class="section-subtitle">Upload, index, and manage official marketing policies and brand rulebooks</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-white-secondary" (click)="downloadSample()">
+        <i class="bi bi-download"></i>
+        <span>Download Sample PDF</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Messages -->
+  <div *ngIf="errorMessage()" class="alert alert-danger alert-dismissible mb-4 shadow-sm">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ errorMessage() }}
+    <button type="button" class="btn-close" (click)="errorMessage.set(null)"></button>
+  </div>
+  <div *ngIf="successMessage()" class="alert alert-success alert-dismissible mb-4 shadow-sm">
+    <i class="bi bi-check-circle-fill me-2"></i> {{ successMessage() }}
+    <button type="button" class="btn-close" (click)="successMessage.set(null)"></button>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <!-- Upload Section -->
+    <div class="col-lg-5">
+      <div class="p-4 bg-white rounded-3 border shadow-sm h-100">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h5 class="fw-bold mb-0 text-dark">Upload New Guideline</h5>
+          <span class="badge bg-secondary text-uppercase" style="font-size: 0.7rem;">PDF Only</span>
+        </div>
+
+        <!-- Drop Zone -->
+        <div class="upload-dropzone p-4 text-center mb-3 rounded-3 border-2 border-dashed bg-light"
+             [ngClass]="{ 'dragging': isDragging(), 'has-file': !!selectedFile }"
+             (dragover)="onDragOver($event)"
+             (dragleave)="onDragLeave($event)"
+             (drop)="onDrop($event)">
+          <input type="file" #fileInput class="d-none" accept=".pdf" (change)="onFileSelected($event)">
+
+          <div *ngIf="!selectedFile">
+            <i class="bi bi-cloud-arrow-up display-5 text-warning mb-2"></i>
+            <h6 class="fw-bold text-dark mb-1">Drag and drop your PDF here</h6>
+            <p class="text-muted small mb-3">or click to browse your local computer (Max 25MB)</p>
+            <button type="button" class="btn-white-secondary btn-sm" (click)="fileInput.click()">
+              <i class="bi bi-folder2-open"></i> Browse Files
+            </button>
+          </div>
+
+          <div *ngIf="selectedFile" class="file-preview text-start">
+            <div class="d-flex align-items-center justify-content-between p-2 rounded bg-white border">
+              <div class="d-flex align-items-center gap-2 overflow-hidden">
+                <i class="bi bi-file-earmark-pdf-fill fs-3 text-danger"></i>
+                <div class="overflow-hidden">
+                  <div class="fw-bold text-truncate text-dark">{{ selectedFile.name }}</div>
+                  <div class="text-muted small">{{ (selectedFile.size / 1024 / 1024) | number:'1.1-2' }} MB</div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-sm btn-link text-danger p-0" (click)="selectedFile = null">
+                <i class="bi bi-trash fs-5"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Title Input -->
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-muted">Guideline Title</label>
+          <input type="text" class="form-control" [(ngModel)]="guidelineTitle" placeholder="e.g. Master Brand Guidelines 2026">
+        </div>
+
+        <!-- Progress Bar -->
+        <div *ngIf="uploading()" class="mb-3">
+          <div class="d-flex justify-content-between small text-muted mb-1">
+            <span>Extracting text & generating vector embeddings...</span>
+            <span>{{ uploadProgress() }}%</span>
+          </div>
+          <div class="progress" style="height: 6px;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" [style.width.%]="uploadProgress()"></div>
+          </div>
+        </div>
+
+        <!-- Upload Action -->
+        <button class="btn-orange-primary w-100 justify-content-center"
+                [disabled]="!selectedFile || uploading()"
+                (click)="submitUpload()">
+          <i class="bi" [ngClass]="uploading() ? 'bi-arrow-clockwise spin' : 'bi-check2-circle'"></i>
+          <span>{{ uploading() ? 'Processing & Indexing Document...' : 'Upload & Create Knowledge Base' }}</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Guidelines List -->
+    <div class="col-lg-7">
+      <div class="p-4 bg-white rounded-3 border shadow-sm h-100">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h5 class="fw-bold mb-0 text-dark">Active Brand Guidelines</h5>
+          <span class="badge bg-dark rounded-pill">{{ guidelines().length }}</span>
+        </div>
+
+        <div *ngIf="loading()" class="text-center py-4">
+          <div class="spinner-border text-warning" role="status"></div>
+          <div class="text-muted small mt-2">Loading guidelines...</div>
+        </div>
+
+        <div *ngIf="!loading() && guidelines().length === 0" class="text-center py-5 text-muted">
+          <i class="bi bi-journal-x fs-1 opacity-50 mb-2"></i>
+          <p class="mb-0">No active guidelines found. Upload your first PDF to begin.</p>
+        </div>
+
+        <div *ngIf="!loading() && guidelines().length > 0" class="guidelines-list">
+          <div *ngFor="let g of guidelines()" class="p-3 mb-3 rounded-3 border bg-light d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-3">
+              <div class="pdf-file-badge">
+                <i class="bi bi-file-earmark-pdf-fill"></i>
+              </div>
+              <div>
+                <div class="fw-bold text-dark">{{ g.title }}</div>
+                <div class="small text-muted">
+                  {{ g.fileName }} &bull; {{ g.chunkCount }} Chunks &bull; {{ g.uploadedAt | date:'mediumDate' }}
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge"
+                    [ngClass]="g.status === 'Ready' ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-warning-subtle text-warning border border-warning-subtle'">
+                {{ g.status }}
+              </span>
+
+              <button class="btn btn-sm btn-white-secondary" (click)="inspectGuideline(g.id)">
+                <i class="bi bi-eye"></i> View Chunks
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Guideline Chunks Inspector Modal -->
+  <div *ngIf="selectedGuideline()" class="modal-backdrop-custom">
+    <div class="modal-card-custom modal-card-large shadow-lg">
+      <div class="modal-header-custom">
+        <div>
+          <h5 class="fw-bold mb-0 text-dark">{{ selectedGuideline()?.title }}</h5>
+          <div class="small text-muted">{{ selectedGuideline()?.chunks?.length }} Chunks Indexed &bull; Normalized 256-dim Vectors</div>
+        </div>
+        <button type="button" class="btn-close" (click)="closeInspector()"></button>
+      </div>
+
+      <div class="modal-body-custom" style="max-height: 480px; overflow-y: auto;">
+        <div *ngFor="let chunk of selectedGuideline()?.chunks; let i = index" class="p-3 mb-2 rounded bg-light border">
+          <div class="d-flex justify-content-between small text-muted mb-1">
+            <strong>Chunk #{{ i + 1 }} &bull; {{ chunk.sectionTitle }}</strong>
+            <span>Page {{ chunk.pageNumber }}</span>
+          </div>
+          <p class="mb-0 small text-dark font-monospace" style="white-space: pre-wrap;">{{ chunk.chunkText }}</p>
+        </div>
+      </div>
+
+      <div class="modal-footer-custom">
+        <button type="button" class="btn-white-secondary" (click)="closeInspector()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>

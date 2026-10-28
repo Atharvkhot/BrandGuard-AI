@@ -1,0 +1,928 @@
+<div class="dashboard-page">
+
+  <!-- TOP BRAND GUIDELINES SECTION -->
+  <section class="guidelines-section mb-4">
+    <!-- Header Row Matching Reference -->
+    <div class="section-header-row">
+      <div class="header-left">
+        <h2 class="section-title">Your Brand Guidelines</h2>
+        <p class="section-subtitle">Upload, manage and analyze approved brand policies</p>
+      </div>
+
+      <div class="header-actions">
+        <!-- Secondary: Upload Button -->
+        <button type="button"
+                class="btn-white-secondary"
+                (click)="openUploadModal()"
+                id="btn-upload-guideline-top">
+          <i class="bi bi-cloud-arrow-up"></i>
+          <span>Upload</span>
+        </button>
+
+        <!-- Primary: Compare Content Button -->
+        <button type="button"
+                class="btn-orange-primary"
+                (click)="openCompareModal()"
+                id="btn-compare-content-top">
+          <i class="bi bi-file-earmark-plus"></i>
+          <span>Compare Content</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Guideline Cards Grid (~4 per row on desktop) -->
+    <div *ngIf="loadingGuidelines()" class="text-center py-5">
+      <div class="spinner-border text-warning" role="status"></div>
+      <div class="text-muted small mt-2">Loading brand guidelines...</div>
+    </div>
+
+    <div *ngIf="!loadingGuidelines()" class="guidelines-grid">
+      <!-- Empty State if No Guidelines -->
+      <div *ngIf="guidelines().length === 0" class="col-12 text-center py-5 bg-white rounded-3 border">
+        <i class="bi bi-file-earmark-arrow-up fs-1 text-muted opacity-50"></i>
+        <h5 class="fw-bold mt-2">No Brand Guidelines Uploaded Yet</h5>
+        <p class="text-muted small mb-3">Upload your corporate tone, claims, and compliance PDF to activate AI validation.</p>
+        <button type="button" class="btn-orange-primary" (click)="openUploadModal()">
+          <i class="bi bi-upload"></i>
+          <span>Upload First Guideline</span>
+        </button>
+      </div>
+
+      <!-- Guideline Card Items -->
+      <div *ngFor="let g of guidelines()" class="guideline-card" [id]="'guideline-card-' + g.id">
+        <!-- Top: PDF Badge & Status -->
+        <div class="card-top">
+          <div class="pdf-file-badge" title="PDF Document">
+            <i class="bi bi-file-earmark-pdf-fill"></i>
+          </div>
+
+          <div class="status-badge"
+               [ngClass]="{
+                 'status-ready': g.status === 'Ready',
+                 'status-processing': g.status === 'Processing' || g.status === 'Uploading',
+                 'status-failed': g.status === 'Failed'
+               }">
+            <span class="badge-dot"></span>
+            <span>{{ g.status }}</span>
+          </div>
+        </div>
+
+        <!-- Guideline Title -->
+        <div class="guideline-title" [title]="g.title">
+          {{ g.title }}
+        </div>
+
+        <!-- Upload Meta -->
+        <div class="upload-meta">
+          <i class="bi bi-calendar3"></i>
+          <span>{{ g.uploadedAt | date:'mediumDate' }}</span>
+          <span class="mx-1">&bull;</span>
+          <span>{{ g.chunkCount }} Chunks</span>
+        </div>
+
+        <!-- Status Explanation -->
+        <div class="status-explanation">
+          <ng-container *ngIf="g.status === 'Ready'">
+            Vector indexed (256-dim unit vectors). Active for RAG cosine retrieval.
+          </ng-container>
+          <ng-container *ngIf="g.status === 'Processing' || g.status === 'Uploading'">
+            Parsing document text and generating embeddings...
+          </ng-container>
+          <ng-container *ngIf="g.status === 'Failed'">
+            Extraction failed or corrupted file. Please re-upload.
+          </ng-container>
+        </div>
+
+        <!-- Card Actions -->
+        <div class="card-actions">
+          <button type="button"
+                  class="btn-action-primary"
+                  (click)="openCompareModal()"
+                  title="Validate content against this guideline">
+            <i class="bi bi-play-circle-fill"></i>
+            <span>Analyze</span>
+          </button>
+
+          <div class="d-flex align-items-center gap-1">
+            <button type="button"
+                    class="btn-action-secondary"
+                    (click)="viewGuidelineDetails(g)"
+                    title="View extracted text and chunks">
+              <i class="bi bi-eye"></i>
+              <span>View</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN AI ANALYSIS WORKSPACE (Two-Column Layout Matching Reference) -->
+  <section class="analysis-workspace-section">
+    <div class="analysis-workspace-panel">
+
+      <!-- LEFT COLUMN: Analysis Navigation Menu (~250px) -->
+      <aside class="workspace-sidebar">
+        <div class="workspace-nav-label">Analysis Navigation</div>
+
+        <!-- 1. Executive Summary -->
+        <button type="button"
+                class="analysis-nav-btn"
+                [class.active]="activeTab() === 'summary'"
+                (click)="setTab('summary')"
+                id="tab-btn-summary">
+          <i class="bi bi-file-earmark-text"></i>
+          <span>Executive Summary</span>
+        </button>
+
+        <!-- 2. Key Findings -->
+        <button type="button"
+                class="analysis-nav-btn"
+                [class.active]="activeTab() === 'findings'"
+                (click)="setTab('findings')"
+                id="tab-btn-findings">
+          <i class="bi bi-exclamation-triangle"></i>
+          <span>Key Findings</span>
+          <span *ngIf="validationResult()?.totalFindings"
+                class="tab-badge badge-high ms-auto">
+            {{ validationResult()?.totalFindings }}
+          </span>
+        </button>
+
+        <!-- 3. Policy Evidence -->
+        <button type="button"
+                class="analysis-nav-btn"
+                [class.active]="activeTab() === 'evidence'"
+                (click)="setTab('evidence')"
+                id="tab-btn-evidence">
+          <i class="bi bi-search"></i>
+          <span>Policy Evidence</span>
+        </button>
+
+        <!-- 4. Risk Assessment -->
+        <button type="button"
+                class="analysis-nav-btn"
+                [class.active]="activeTab() === 'risk'"
+                (click)="setTab('risk')"
+                id="tab-btn-risk">
+          <i class="bi bi-shield-exclamation"></i>
+          <span>Risk Assessment</span>
+        </button>
+
+        <!-- 5. Compliance -->
+        <button type="button"
+                class="analysis-nav-btn"
+                [class.active]="activeTab() === 'compliance'"
+                (click)="setTab('compliance')"
+                id="tab-btn-compliance">
+          <i class="bi bi-check2-circle"></i>
+          <span>Compliance</span>
+        </button>
+
+        <!-- 6. Suggested Corrections -->
+        <button type="button"
+                class="analysis-nav-btn"
+                [class.active]="activeTab() === 'corrections'"
+                (click)="setTab('corrections')"
+                id="tab-btn-corrections">
+          <i class="bi bi-lightbulb"></i>
+          <span>Suggested Fixes</span>
+        </button>
+
+        <!-- 7. Human Review -->
+        <button type="button"
+                class="analysis-nav-btn"
+                [class.active]="activeTab() === 'review'"
+                (click)="setTab('review')"
+                id="tab-btn-review">
+          <i class="bi bi-person-check"></i>
+          <span>Human Review</span>
+          <span class="tab-badge ms-auto"
+                [ngClass]="{
+                  'bg-warning-subtle text-warning': validationResult()?.status === 'PendingReview',
+                  'bg-success-subtle text-success': validationResult()?.status === 'Approved',
+                  'bg-danger-subtle text-danger': validationResult()?.status === 'Rejected'
+                }">
+            Review
+          </span>
+        </button>
+      </aside>
+
+      <!-- RIGHT COLUMN: Analysis Workspace Content Area -->
+      <main class="workspace-content">
+        <!-- Workspace Header with Submission Switcher -->
+        <div class="content-heading-row">
+          <div>
+            <h3>
+              <ng-container [ngSwitch]="activeTab()">
+                <span *ngSwitchCase="'summary'">Executive Summary</span>
+                <span *ngSwitchCase="'findings'">Key Findings & Rule Violations</span>
+                <span *ngSwitchCase="'evidence'">Policy Evidence & Retrieved Citations</span>
+                <span *ngSwitchCase="'risk'">Risk Assessment & Threat Modeling</span>
+                <span *ngSwitchCase="'compliance'">Compliance & Policy Determinations</span>
+                <span *ngSwitchCase="'corrections'">Suggested Corrections & Fixes</span>
+                <span *ngSwitchCase="'review'">Human Governance Review</span>
+              </ng-container>
+            </h3>
+            <p class="text-muted small mb-0 mt-1">
+              "AI Detects. Evidence Explains. Humans Decide."
+            </p>
+          </div>
+
+          <!-- Submission Selector Dropdown & Risk Level Badge -->
+          <div class="d-flex align-items-center gap-2">
+            <div *ngIf="submissions().length > 0" class="d-flex align-items-center gap-1">
+              <label for="submission-select" class="small text-muted fw-semibold me-1 d-none d-sm-inline">Campaign:</label>
+              <select id="submission-select"
+                      class="form-select form-select-sm"
+                      style="min-width: 220px; border-radius: 8px; border-color: var(--border-light);"
+                      [ngModel]="selectedSubmissionId()"
+                      (ngModelChange)="selectSubmission($event)">
+                <option *ngFor="let s of submissions()" [value]="s.id">
+                  {{ s.title }} ({{ s.contentType }})
+                </option>
+              </select>
+            </div>
+
+            <div *ngIf="validationResult()?.overallRiskLevel"
+                 class="badge-severity"
+                 [ngClass]="{
+                   'severity-high': validationResult()?.overallRiskLevel === 'High',
+                   'severity-medium': validationResult()?.overallRiskLevel === 'Medium',
+                   'severity-low': validationResult()?.overallRiskLevel === 'Low'
+                 }">
+              <i class="bi bi-shield-fill"></i>
+              <span>{{ validationResult()?.overallRiskLevel }} Risk</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Global Copy Feedback Toast -->
+        <div *ngIf="copyFeedback()" class="alert alert-success py-2 px-3 mb-3 small d-flex align-items-center gap-2 shadow-sm">
+          <i class="bi bi-check-circle-fill"></i>
+          <span>{{ copyFeedback() }}</span>
+        </div>
+
+        <!-- Loading Validation Spinner -->
+        <div *ngIf="loadingValidation()" class="text-center py-5">
+          <div class="spinner-border text-warning" role="status"></div>
+          <div class="text-muted small mt-2">Running RAG retrieval and AI policy validation...</div>
+        </div>
+
+        <!-- TAB 1: EXECUTIVE SUMMARY (Default) -->
+        <div *ngIf="!loadingValidation() && activeTab() === 'summary'">
+          <!-- If no validation result -->
+          <div *ngIf="!validationResult()" class="text-center py-5 bg-light rounded-3 border">
+            <i class="bi bi-shield-exclamation fs-1 text-muted opacity-50"></i>
+            <h5 class="fw-bold mt-2">No Validation Results Yet</h5>
+            <p class="text-muted small mb-3">Submit marketing content to execute automated semantic and deterministic checks.</p>
+            <button type="button" class="btn-orange-primary" (click)="openCompareModal()">
+              <i class="bi bi-pencil-square"></i>
+              <span>Validate Content</span>
+            </button>
+          </div>
+
+          <!-- Summary Card with Actual Validation Data -->
+          <div *ngIf="validationResult()" class="executive-summary-card">
+            <!-- Content Overview Banner -->
+            <div class="p-3 bg-light rounded-3 border mb-3">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="badge bg-secondary text-white text-uppercase" style="font-size: 0.72rem;">
+                  {{ validationResult()?.contentType }}
+                </span>
+                <span class="small text-muted">
+                  Validated on {{ validationResult()?.startedAt | date:'medium' }}
+                </span>
+              </div>
+              <h5 class="fw-bold text-dark mb-1">{{ validationResult()?.submissionTitle }}</h5>
+              <p class="text-muted fst-italic mb-0 small" style="background: #ffffff; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px dashed #cbd5e1;">
+                "{{ validationResult()?.originalContent }}"
+              </p>
+            </div>
+
+            <!-- Key Findings & Metrics Grid -->
+            <div class="row g-3 mb-4">
+              <div class="col-sm-4">
+                <div class="p-3 rounded-3 border bg-white h-100">
+                  <div class="text-muted small fw-semibold text-uppercase">Issues Detected</div>
+                  <div class="fs-3 fw-bold text-danger mt-1">
+                    {{ validationResult()?.totalFindings }} Findings
+                  </div>
+                  <div class="small text-muted mt-1">
+                    High: {{ validationResult()?.highRiskCount }} &bull; Med: {{ validationResult()?.mediumRiskCount }}
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-sm-4">
+                <div class="p-3 rounded-3 border bg-white h-100">
+                  <div class="text-muted small fw-semibold text-uppercase">Overall Risk Rating</div>
+                  <div class="fs-3 fw-bold mt-1"
+                       [ngClass]="{
+                         'text-danger': validationResult()?.overallRiskLevel === 'High',
+                         'text-warning': validationResult()?.overallRiskLevel === 'Medium',
+                         'text-success': validationResult()?.overallRiskLevel === 'Low'
+                       }">
+                    {{ validationResult()?.overallRiskLevel }} Risk
+                  </div>
+                  <div class="small text-muted mt-1">Hybrid Deterministic + RAG Vector</div>
+                </div>
+              </div>
+
+              <div class="col-sm-4">
+                <div class="p-3 rounded-3 border bg-white h-100">
+                  <div class="text-muted small fw-semibold text-uppercase">Human Review State</div>
+                  <div class="fs-3 fw-bold text-primary mt-1">
+                    {{ validationResult()?.status }}
+                  </div>
+                  <div class="small text-muted mt-1">Requires human review before publishing</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Explanatory Overview Paragraph -->
+            <div class="p-3 rounded-3 border bg-white mb-4">
+              <h6 class="fw-bold text-dark mb-2">
+                <i class="bi bi-info-circle text-warning me-1"></i>
+                Executive Assessment
+              </h6>
+              <p class="text-secondary small mb-2 line-height-base">
+                BrandGuard AI scanned the submitted copy against active corporate brand guidelines.
+                The system flagged <strong>{{ validationResult()?.totalFindings }} potential policy violations</strong>,
+                principally concerning absolute outcome guarantees and superlative market-ranking claims without accredited proof.
+              </p>
+              <div class="d-flex align-items-center gap-2 mt-3">
+                <button type="button"
+                        class="btn-orange-primary"
+                        (click)="setTab('findings')">
+                  <i class="bi bi-list-check"></i>
+                  <span>Review {{ validationResult()?.totalFindings }} Key Findings</span>
+                </button>
+
+                <button type="button"
+                        class="btn-white-secondary"
+                        (click)="setTab('review')">
+                  <i class="bi bi-person-check"></i>
+                  <span>Submit Human Review</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: KEY FINDINGS -->
+        <div *ngIf="!loadingValidation() && activeTab() === 'findings'">
+          <div *ngIf="!validationResult()?.findings?.length" class="text-center py-5 bg-light rounded-3 border">
+            <i class="bi bi-check-circle-fill fs-1 text-success opacity-75"></i>
+            <h5 class="fw-bold mt-2">Zero Compliance Violations Detected</h5>
+            <p class="text-muted small mb-0">The analyzed copy respects approved brand tone and claims policies.</p>
+          </div>
+
+          <div *ngFor="let finding of validationResult()?.findings; let i = index"
+               class="finding-card"
+               [id]="'finding-card-' + finding.id">
+            <div class="finding-header">
+              <div class="finding-title-group">
+                <i class="bi bi-exclamation-octagon-fill"></i>
+                <h5>{{ finding.issueType }}</h5>
+              </div>
+
+              <span class="badge-severity"
+                    [ngClass]="{
+                      'severity-high': finding.severity === 'High',
+                      'severity-medium': finding.severity === 'Medium',
+                      'severity-low': finding.severity === 'Low'
+                    }">
+                {{ finding.severity }} Severity
+              </span>
+            </div>
+
+            <!-- Affected Marketing Copy -->
+            <div class="affected-text-box">
+              <span class="fw-bold">Flagged Text:</span> "{{ finding.originalText }}"
+            </div>
+
+            <!-- Policy Explanation -->
+            <p class="explanation-text">{{ finding.explanation }}</p>
+
+            <!-- Suggested Fix -->
+            <div class="suggested-fix-box">
+              <div class="fix-title">
+                <i class="bi bi-magic"></i>
+                <span>Suggested Revision</span>
+              </div>
+              <div>{{ finding.suggestedFix }}</div>
+            </div>
+
+            <!-- Supporting Reference -->
+            <div class="d-flex align-items-center justify-content-between pt-2 border-top mt-2 small text-muted">
+              <span>
+                <i class="bi bi-file-earmark-text me-1"></i>
+                Source: <strong>{{ finding.sourceGuidelineTitle || 'Brand Guidelines' }}</strong>
+                <span *ngIf="finding.pageNumber">&bull; Page {{ finding.pageNumber }}</span>
+              </span>
+
+              <button type="button"
+                      class="btn btn-sm btn-link text-decoration-none p-0"
+                      style="color: var(--color-primary);"
+                      (click)="selectFinding(i); setTab('evidence')">
+                View Policy Evidence &rarr;
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: POLICY EVIDENCE -->
+        <div *ngIf="!loadingValidation() && activeTab() === 'evidence'">
+          <div *ngIf="!validationResult()?.findings?.length" class="text-center py-5 bg-light rounded-3 border">
+            <i class="bi bi-search fs-1 text-muted opacity-50"></i>
+            <h5 class="fw-bold mt-2">No Evidence Citations</h5>
+            <p class="text-muted small mb-0">No policy violations require citation lookup for this submission.</p>
+          </div>
+
+          <div *ngIf="validationResult()?.findings?.length">
+            <!-- Finding Selector Bar -->
+            <div class="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom overflow-x-auto">
+              <span class="small text-muted fw-bold text-uppercase me-1">Rule:</span>
+              <button *ngFor="let f of validationResult()?.findings; let i = index"
+                      type="button"
+                      class="btn btn-sm rounded-pill"
+                      [ngClass]="selectedFindingIndex() === i ? 'btn-warning fw-bold' : 'btn-outline-secondary'"
+                      (click)="selectFinding(i)">
+                #{{ i + 1 }} {{ f.issueType }}
+              </button>
+            </div>
+
+            <!-- Selected Evidence Details Panel -->
+            <div *ngIf="selectedFinding()" class="p-3 rounded-3 border bg-light">
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bi bi-shield-check text-warning fs-5"></i>
+                  <h6 class="fw-bold mb-0 text-dark">{{ selectedFinding()?.issueType }}</h6>
+                </div>
+                <span class="badge bg-dark">Source Document: Page {{ selectedFinding()?.pageNumber || 1 }}</span>
+              </div>
+
+              <!-- Flagged Copy vs Verbatim Guideline Excerpt -->
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <div class="p-3 bg-white rounded-3 border h-100">
+                    <div class="text-muted small fw-semibold text-uppercase mb-1">Submitted Marketing Phrase</div>
+                    <div class="p-2 rounded bg-danger-subtle text-danger fw-bold small">
+                      "{{ selectedFinding()?.originalText }}"
+                    </div>
+                    <div class="text-muted small mt-2">
+                      {{ selectedFinding()?.explanation }}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-6">
+                  <div class="p-3 bg-white rounded-3 border h-100">
+                    <div class="text-muted small fw-semibold text-uppercase mb-1">Approved Brand Guideline Excerpt</div>
+                    <div class="p-2 rounded bg-light border text-dark small font-monospace" style="max-height: 140px; overflow-y: auto;">
+                      {{ selectedFinding()?.evidenceText }}
+                    </div>
+                    <div class="text-muted small mt-2">
+                      Retrieved via Cosine Vector Similarity from: <em>{{ selectedFinding()?.sourceGuidelineTitle }}</em>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Suggestion Link -->
+              <div class="p-3 bg-white rounded-3 border">
+                <div class="fw-bold text-success small mb-1">
+                  <i class="bi bi-lightbulb-fill text-warning me-1"></i>
+                  Compliant Recommended Replacement
+                </div>
+                <div class="text-dark small">{{ selectedFinding()?.suggestedFix }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: RISK ASSESSMENT -->
+        <div *ngIf="!loadingValidation() && activeTab() === 'risk'">
+          <div class="row g-3 mb-4">
+            <div class="col-sm-3">
+              <div class="p-3 bg-white rounded-3 border text-center">
+                <div class="text-muted small fw-semibold text-uppercase">Overall Risk</div>
+                <div class="fs-2 fw-bold text-danger mt-1">{{ validationResult()?.overallRiskLevel || 'None' }}</div>
+                <div class="small text-muted">Composite Index</div>
+              </div>
+            </div>
+
+            <div class="col-sm-3">
+              <div class="p-3 bg-white rounded-3 border text-center">
+                <div class="text-muted small fw-semibold text-uppercase">High Severity</div>
+                <div class="fs-2 fw-bold text-danger mt-1">{{ validationResult()?.highRiskCount || 0 }}</div>
+                <div class="small text-muted">Critical Prohibitions</div>
+              </div>
+            </div>
+
+            <div class="col-sm-3">
+              <div class="p-3 bg-white rounded-3 border text-center">
+                <div class="text-muted small fw-semibold text-uppercase">Medium Severity</div>
+                <div class="fs-2 fw-bold text-warning mt-1">{{ validationResult()?.mediumRiskCount || 0 }}</div>
+                <div class="small text-muted">Tone & Disclaimers</div>
+              </div>
+            </div>
+
+            <div class="col-sm-3">
+              <div class="p-3 bg-white rounded-3 border text-center">
+                <div class="text-muted small fw-semibold text-uppercase">Low Severity</div>
+                <div class="fs-2 fw-bold text-success mt-1">{{ validationResult()?.lowRiskCount || 0 }}</div>
+                <div class="small text-muted">Stylistic Advisories</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Risk Breakdown List -->
+          <div class="p-3 bg-white rounded-3 border mb-3">
+            <h6 class="fw-bold mb-3 text-dark">Risk Profile Breakdown</h6>
+            <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+              <div>
+                <span class="fw-bold text-dark">Outcome Guarantee Risk</span>
+                <p class="text-muted small mb-0">Claims promising 100% certainty or unconditional results.</p>
+              </div>
+              <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">High Risk</span>
+            </div>
+
+            <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+              <div>
+                <span class="fw-bold text-dark">Superlative Market Position Risk</span>
+                <p class="text-muted small mb-0">Claims of #1 rank or world-best status without third-party proof.</p>
+              </div>
+              <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">High Risk</span>
+            </div>
+
+            <div class="d-flex align-items-center justify-content-between py-2">
+              <div>
+                <span class="fw-bold text-dark">Mandatory Promotional Disclosures</span>
+                <p class="text-muted small mb-0">Missing standard "Terms & Conditions apply. Results may vary." footnote.</p>
+              </div>
+              <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1">Medium Risk</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 5: COMPLIANCE -->
+        <div *ngIf="!loadingValidation() && activeTab() === 'compliance'">
+          <div class="p-3 bg-white rounded-3 border mb-3">
+            <h6 class="fw-bold mb-3 text-dark">Corporate Policy Determinations</h6>
+
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th style="font-size: 0.8rem; text-transform: uppercase;">Policy Area</th>
+                    <th style="font-size: 0.8rem; text-transform: uppercase;">Standard</th>
+                    <th style="font-size: 0.8rem; text-transform: uppercase;">Determination</th>
+                  </tr>
+                </thead>
+                <tbody class="small">
+                  <tr>
+                    <td class="fw-bold">Absolute Guarantees</td>
+                    <td>Must not promise 100% or guaranteed outcomes</td>
+                    <td><span class="badge bg-danger-subtle text-danger border border-danger-subtle">Violated</span></td>
+                  </tr>
+                  <tr>
+                    <td class="fw-bold">Superlative Claims</td>
+                    <td>Claims of world-best require verified accreditation</td>
+                    <td><span class="badge bg-danger-subtle text-danger border border-danger-subtle">Violated</span></td>
+                  </tr>
+                  <tr>
+                    <td class="fw-bold">Prohibited Medical Terms</td>
+                    <td>No miracle cure or disease elimination assertions</td>
+                    <td><span class="badge bg-success-subtle text-success border border-success-subtle">Compliant</span></td>
+                  </tr>
+                  <tr>
+                    <td class="fw-bold">Promotional Disclaimers</td>
+                    <td>Outcome marketing must state terms and variability</td>
+                    <td><span class="badge bg-warning-subtle text-warning border border-warning-subtle">Missing</span></td>
+                  </tr>
+                  <tr>
+                    <td class="fw-bold">Professional Voice</td>
+                    <td>Marketing must be authoritative and respectful</td>
+                    <td><span class="badge bg-success-subtle text-success border border-success-subtle">Compliant</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Legal / Advisory Notice -->
+          <div class="p-3 bg-light rounded-3 border text-muted small">
+            <i class="bi bi-shield-lock-fill text-secondary me-1"></i>
+            <strong>Advisory Notice:</strong> BrandGuard AI operates as an automated pre-publication screening engine.
+            All AI findings represent guideline policy comparisons and do not constitute final legal certification.
+          </div>
+        </div>
+
+        <!-- TAB 6: SUGGESTED CORRECTIONS -->
+        <div *ngIf="!loadingValidation() && activeTab() === 'corrections'">
+          <div *ngIf="!validationResult()?.findings?.length" class="text-center py-5 bg-light rounded-3 border">
+            <i class="bi bi-stars fs-1 text-success opacity-75"></i>
+            <h5 class="fw-bold mt-2">No Corrections Required</h5>
+            <p class="text-muted small mb-0">The copy satisfies all policy requirements.</p>
+          </div>
+
+          <div *ngFor="let f of validationResult()?.findings" class="p-3 bg-white rounded-3 border mb-3">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <span class="fw-bold text-dark">{{ f.issueType }}</span>
+              <button type="button"
+                      class="btn btn-sm btn-white-secondary"
+                      (click)="copyCorrection(f.suggestedFix)">
+                <i class="bi bi-clipboard"></i>
+                <span>Copy Fix</span>
+              </button>
+            </div>
+
+            <div class="row g-2 mb-2">
+              <div class="col-md-5">
+                <div class="p-2 rounded bg-danger-subtle text-danger small">
+                  <strong>Original:</strong> "{{ f.originalText }}"
+                </div>
+              </div>
+              <div class="col-md-7">
+                <div class="p-2 rounded bg-success-subtle text-success small">
+                  <strong>Approved Fix:</strong> {{ f.suggestedFix }}
+                </div>
+              </div>
+            </div>
+
+            <div class="small text-muted">
+              <strong>Guideline:</strong> {{ f.sourceGuidelineTitle || 'Brand Governance Policy' }} &bull; Page {{ f.pageNumber || 1 }}
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 7: HUMAN REVIEW -->
+        <div *ngIf="!loadingValidation() && activeTab() === 'review'">
+          <div class="p-3 bg-white rounded-3 border">
+            <h5 class="fw-bold text-dark mb-3">Human Governance & Review Decision</h5>
+
+            <!-- Review Status Alert -->
+            <div *ngIf="reviewMessage()"
+                 class="alert py-2 px-3 mb-3 small d-flex align-items-center gap-2 shadow-sm"
+                 [ngClass]="reviewMessage()?.type === 'success' ? 'alert-success border-success' : 'alert-danger border-danger'">
+              <i class="bi" [ngClass]="reviewMessage()?.type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'"></i>
+              <span>{{ reviewMessage()?.text }}</span>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label small fw-bold text-muted">Select Human Decision:</label>
+              <div class="d-flex flex-wrap gap-2">
+                <!-- Request Changes -->
+                <button type="button"
+                        class="btn btn-sm px-3 py-2 rounded-3 border d-inline-flex align-items-center gap-2"
+                        [ngClass]="selectedDecision === 'ChangesRequested' ? 'btn-warning fw-bold' : 'btn-light'"
+                        (click)="selectedDecision = 'ChangesRequested'">
+                  <i class="bi bi-pencil-square"></i>
+                  <span>Request Changes</span>
+                </button>
+
+                <!-- Approve -->
+                <button type="button"
+                        class="btn btn-sm px-3 py-2 rounded-3 border d-inline-flex align-items-center gap-2"
+                        [ngClass]="selectedDecision === 'Approved' ? 'btn-success fw-bold' : 'btn-light'"
+                        (click)="selectedDecision = 'Approved'">
+                  <i class="bi bi-check-circle-fill"></i>
+                  <span>Approve Campaign</span>
+                </button>
+
+                <!-- Reject -->
+                <button type="button"
+                        class="btn btn-sm px-3 py-2 rounded-3 border d-inline-flex align-items-center gap-2"
+                        [ngClass]="selectedDecision === 'Rejected' ? 'btn-danger fw-bold text-white' : 'btn-light'"
+                        (click)="selectedDecision = 'Rejected'">
+                  <i class="bi bi-x-circle-fill"></i>
+                  <span>Reject</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label for="reviewer-name-input" class="form-label small fw-bold text-muted">Reviewer Name & Role:</label>
+                <input id="reviewer-name-input"
+                       type="text"
+                       class="form-control form-control-sm"
+                       [(ngModel)]="reviewerName"
+                       placeholder="e.g. Atharv Khot (Lead Reviewer)">
+              </div>
+
+              <div class="col-12">
+                <label for="reviewer-comments-input" class="form-label small fw-bold text-muted">Governance Notes & Comments:</label>
+                <textarea id="reviewer-comments-input"
+                          class="form-control form-control-sm"
+                          rows="3"
+                          [(ngModel)]="reviewComments"
+                          placeholder="State requirements for creative revision or verification basis..."></textarea>
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center justify-content-between pt-2 border-top">
+              <span class="small text-muted">
+                Decision will be permanently saved to database audit log.
+              </span>
+
+              <button type="button"
+                      class="btn-orange-primary"
+                      (click)="submitReview()"
+                      [disabled]="submittingReview()"
+                      id="btn-save-human-decision">
+                <i class="bi" [ngClass]="submittingReview() ? 'bi-arrow-clockwise spin' : 'bi-check2-circle'"></i>
+                <span>{{ submittingReview() ? 'Saving Decision...' : 'Save Decision' }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </section>
+
+</div>
+
+<!-- 1. GUIDELINE UPLOAD MODAL -->
+<div *ngIf="showUploadModal()" class="modal-backdrop-custom">
+  <div class="modal-card-custom shadow-lg">
+    <div class="modal-header-custom">
+      <div class="d-flex align-items-center gap-2">
+        <div class="pdf-file-badge">
+          <i class="bi bi-cloud-arrow-up-fill"></i>
+        </div>
+        <div>
+          <h5 class="fw-bold mb-0 text-dark">Upload Brand Guidelines PDF</h5>
+          <div class="small text-muted">PDF documents are parsed and converted to 256-dim embeddings</div>
+        </div>
+      </div>
+      <button type="button" class="btn-close" (click)="closeUploadModal()"></button>
+    </div>
+
+    <div class="modal-body-custom">
+      <div *ngIf="uploadError()" class="alert alert-danger py-2 px-3 mb-3 small">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+        {{ uploadError() }}
+      </div>
+
+      <div *ngIf="uploadSuccess()" class="alert alert-success py-2 px-3 mb-3 small">
+        <i class="bi bi-check-circle-fill me-1"></i>
+        {{ uploadSuccess() }}
+      </div>
+
+      <div class="mb-3">
+        <label for="upload-doc-title" class="form-label small fw-bold text-muted">Guideline Document Title:</label>
+        <input id="upload-doc-title"
+               type="text"
+               class="form-control"
+               [(ngModel)]="uploadTitle"
+               placeholder="e.g. Official Global Brand Guidelines 2026">
+      </div>
+
+      <div class="mb-3">
+        <label for="upload-pdf-file" class="form-label small fw-bold text-muted">Choose PDF File:</label>
+        <input id="upload-pdf-file"
+               type="file"
+               class="form-control"
+               accept=".pdf"
+               (change)="onFileChange($event)">
+        <div class="form-text small">Only PDF files up to 25MB are supported.</div>
+      </div>
+    </div>
+
+    <div class="modal-footer-custom">
+      <button type="button" class="btn-white-secondary" (click)="closeUploadModal()">Cancel</button>
+      <button type="button"
+              class="btn-orange-primary"
+              (click)="executeUpload()"
+              [disabled]="isUploading() || !uploadFile">
+        <i class="bi" [ngClass]="isUploading() ? 'bi-arrow-clockwise spin' : 'bi-upload'"></i>
+        <span>{{ isUploading() ? 'Extracting & Indexing...' : 'Upload & Process' }}</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 2. COMPARE CONTENT / VALIDATION MODAL -->
+<div *ngIf="showCompareModal()" class="modal-backdrop-custom">
+  <div class="modal-card-custom modal-card-large shadow-lg">
+    <div class="modal-header-custom">
+      <div class="d-flex align-items-center gap-2">
+        <div class="shield-mini-badge">
+          <i class="bi bi-pencil-square"></i>
+        </div>
+        <div>
+          <h5 class="fw-bold mb-0 text-dark">Submit Marketing Copy for Validation</h5>
+          <div class="small text-muted">RAG semantic search and deterministic rule checks will execute immediately</div>
+        </div>
+      </div>
+      <button type="button" class="btn-close" (click)="closeCompareModal()"></button>
+    </div>
+
+    <div class="modal-body-custom">
+      <!-- Quick Test Prompt Preset Chips -->
+      <div class="mb-3">
+        <span class="small text-muted fw-bold text-uppercase d-block mb-1">Load Test Sample Draft:</span>
+        <div class="d-flex flex-wrap gap-2">
+          <button type="button"
+                  class="btn btn-sm btn-outline-danger rounded-pill"
+                  (click)="loadSamplePrompt('violating')">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            Absolute Guarantee Violation
+          </button>
+
+          <button type="button"
+                  class="btn btn-sm btn-outline-success rounded-pill"
+                  (click)="loadSamplePrompt('compliant')">
+            <i class="bi bi-check-circle me-1"></i>
+            Clean Compliant Copy
+          </button>
+
+          <button type="button"
+                  class="btn btn-sm btn-outline-warning rounded-pill"
+                  (click)="loadSamplePrompt('medical')">
+            <i class="bi bi-heart-pulse me-1"></i>
+            Medical/Financial Claim
+          </button>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-8">
+          <label for="new-content-title" class="form-label small fw-bold text-muted">Campaign Title:</label>
+          <input id="new-content-title"
+                 type="text"
+                 class="form-control"
+                 [(ngModel)]="newTitle"
+                 placeholder="e.g. BrandGuard AI Launch Campaign">
+        </div>
+
+        <div class="col-md-4">
+          <label for="new-content-type" class="form-label small fw-bold text-muted">Channel / Content Type:</label>
+          <select id="new-content-type"
+                  class="form-select"
+                  [(ngModel)]="newContentType">
+            <option value="SocialMediaPost">Social Media Post</option>
+            <option value="EmailNewsletter">Email Newsletter</option>
+            <option value="BlogArticle">Blog Article</option>
+            <option value="LandingPage">Landing Page Hero</option>
+            <option value="PressRelease">Press Release</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mb-2">
+        <div class="d-flex align-items-center justify-content-between mb-1">
+          <label for="new-content-text" class="form-label small fw-bold text-muted mb-0">Marketing Content Draft:</label>
+          <div class="small text-muted">
+            <span class="fw-semibold">{{ wordCount() }}</span> words &bull;
+            <span class="fw-semibold">{{ charCount() }}</span> characters
+          </div>
+        </div>
+
+        <textarea id="new-content-text"
+                  class="form-control font-monospace"
+                  rows="4"
+                  [(ngModel)]="newContentText"
+                  placeholder="Paste or write marketing draft here..."></textarea>
+      </div>
+    </div>
+
+    <div class="modal-footer-custom">
+      <button type="button" class="btn-white-secondary" (click)="closeCompareModal()">Cancel</button>
+      <button type="button"
+              class="btn-orange-primary"
+              (click)="validateNewContent()"
+              [disabled]="isValidatingNew() || !newTitle.trim() || !newContentText.trim()"
+              id="btn-run-validation-submit">
+        <i class="bi" [ngClass]="isValidatingNew() ? 'bi-arrow-clockwise spin' : 'bi-cpu-fill'"></i>
+        <span>{{ isValidatingNew() ? 'Executing AI Validation...' : 'Validate Content' }}</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 3. GUIDELINE DETAIL INSPECTOR MODAL -->
+<div *ngIf="viewingGuideline()" class="modal-backdrop-custom">
+  <div class="modal-card-custom modal-card-large shadow-lg">
+    <div class="modal-header-custom">
+      <div>
+        <h5 class="fw-bold mb-0 text-dark">{{ viewingGuideline()?.title }}</h5>
+        <div class="small text-muted">Uploaded {{ viewingGuideline()?.uploadedAt | date:'medium' }} &bull; {{ viewingGuideline()?.chunks?.length }} Chunks</div>
+      </div>
+      <button type="button" class="btn-close" (click)="closeGuidelineInspector()"></button>
+    </div>
+
+    <div class="modal-body-custom" style="max-height: 480px; overflow-y: auto;">
+      <h6 class="fw-bold small text-muted text-uppercase mb-2">Parsed Document Text:</h6>
+      <pre class="p-3 bg-light rounded-3 border small text-dark font-monospace" style="white-space: pre-wrap;">{{ viewingGuideline()?.extractedText }}</pre>
+    </div>
+
+    <div class="modal-footer-custom">
+      <button type="button" class="btn-white-secondary" (click)="closeGuidelineInspector()">Close</button>
+    </div>
+  </div>
+</div>

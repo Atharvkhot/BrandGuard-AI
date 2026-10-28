@@ -1,0 +1,106 @@
+<div class="content-submission-page">
+  <!-- Page Header -->
+  <div class="section-header-row">
+    <div class="header-left">
+      <h2 class="section-title">Submit Marketing Content</h2>
+      <p class="section-subtitle">Validate marketing campaigns, social posts, and copy drafts against approved brand policies</p>
+    </div>
+
+    <!-- Quick Preset Buttons -->
+    <div class="header-actions">
+      <button type="button" class="btn btn-sm btn-outline-danger rounded-pill d-inline-flex align-items-center gap-1" (click)="loadViolatingSample()">
+        <i class="bi bi-exclamation-octagon"></i> Load Violating Sample
+      </button>
+      <button type="button" class="btn btn-sm btn-outline-success rounded-pill d-inline-flex align-items-center gap-1" (click)="loadCompliantSample()">
+        <i class="bi bi-check-circle"></i> Load Compliant Sample
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="errorMessage()" class="alert alert-danger alert-dismissible mb-4 shadow-sm">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ errorMessage() }}
+    <button type="button" class="btn-close" (click)="errorMessage.set(null)"></button>
+  </div>
+
+  <div class="row g-4">
+    <!-- Main Content Input Form Column -->
+    <div class="col-lg-8">
+      <div class="p-4 bg-white rounded-3 border shadow-sm">
+        <h5 class="fw-bold mb-3 text-dark">Campaign Information</h5>
+
+        <div class="row g-3 mb-3">
+          <div class="col-md-8">
+            <label class="form-label small fw-bold text-muted">Campaign / Content Title</label>
+            <input type="text" class="form-control" [(ngModel)]="title" placeholder="e.g. BrandGuard AI Test Campaign">
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label small fw-bold text-muted">Channel / Content Type</label>
+            <select class="form-select" [(ngModel)]="contentType">
+              <option *ngFor="let type of contentTypes" [value]="type">{{ type }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <label class="form-label small fw-bold text-muted mb-0">Marketing Content Copy</label>
+            <span class="text-muted small font-monospace">{{ contentText.length }} characters</span>
+          </div>
+          <textarea class="form-control font-monospace"
+                    rows="8"
+                    [(ngModel)]="contentText"
+                    placeholder="Paste or write the draft marketing copy here to analyze against approved brand policies..."></textarea>
+        </div>
+
+        <!-- Validation Loading State -->
+        <div *ngIf="validating()" class="p-3 mb-4 rounded bg-light border text-center">
+          <div class="spinner-border text-warning mb-2" role="status"></div>
+          <div class="fw-bold text-dark">Validating Content Against Brand Guidelines...</div>
+          <div class="text-muted small">Generating semantic query vector &rarr; Retrieving top guideline chunks &rarr; Executing deterministic rules & LLM synthesis.</div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+          <button type="button"
+                  class="btn-white-secondary"
+                  [disabled]="validating() || submitting()"
+                  (click)="saveDraft()">
+            <i class="bi bi-file-earmark-arrow-down"></i>
+            <span>Save Draft</span>
+          </button>
+
+          <button type="button"
+                  class="btn-orange-primary"
+                  [disabled]="validating() || submitting()"
+                  (click)="submitAndValidate()"
+                  id="btn-validate-content-page">
+            <i class="bi" [ngClass]="validating() ? 'bi-arrow-clockwise spin' : 'bi-cpu-fill'"></i>
+            <span>{{ validating() ? 'Analyzing Compliance...' : 'Validate Content' }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Side Guidance Column -->
+    <div class="col-lg-4">
+      <div class="p-4 bg-white rounded-3 border shadow-sm mb-3">
+        <h6 class="fw-bold mb-3 text-dark">
+          <i class="bi bi-shield-check text-warning me-2"></i>
+          Governance Pipeline
+        </h6>
+        <div class="small text-muted">
+          <p class="mb-2"><strong>Hybrid Architecture:</strong></p>
+          <ul class="ps-3 mb-3">
+            <li class="mb-1"><strong>Deterministic Rules:</strong> Flags prohibited terms, absolute guarantees, and missing required disclaimers.</li>
+            <li class="mb-1"><strong>Vector Semantic Search:</strong> Finds the most relevant clauses from uploaded PDF brand rulebooks using cosine similarity.</li>
+            <li class="mb-1"><strong>Evidence Attribution:</strong> Synthesizes tone and unsupported claim risks with strict evidence citation verification.</li>
+          </ul>
+          <div class="alert alert-warning py-2 px-3 small mb-0">
+            <strong>Human Decision Required:</strong> AI findings inform human reviewers; no content is published without human sign-off.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

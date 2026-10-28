@@ -1,0 +1,120 @@
+<div class="human-review-page">
+  <!-- Page Header Row -->
+  <div class="section-header-row">
+    <div class="header-left">
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <span class="badge bg-warning text-dark fw-bold">Step 3: Human Decision</span>
+        <span class="text-muted small">Submission ID: {{ submissionId | slice:0:8 }}</span>
+      </div>
+      <h2 class="section-title">Human Review Sign-Off</h2>
+    </div>
+    <div class="header-actions">
+      <a [routerLink]="['/results', submissionId]" class="btn-white-secondary">
+        <i class="bi bi-arrow-left"></i>
+        <span>Back to Findings</span>
+      </a>
+    </div>
+  </div>
+
+  <div *ngIf="errorMessage()" class="alert alert-danger shadow-sm">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ errorMessage() }}
+  </div>
+
+  <div *ngIf="existingDecision()" class="alert alert-info shadow-sm d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <i class="bi bi-info-circle-fill me-2"></i>
+      A recorded review decision exists: <strong>{{ existingDecision()?.decision }}</strong> by <strong>{{ existingDecision()?.reviewerName }}</strong> on {{ existingDecision()?.reviewedAt | date:'medium' }}.
+    </div>
+    <a routerLink="/history" class="btn btn-sm btn-info text-white">View in History</a>
+  </div>
+
+  <div class="row g-4">
+    <!-- Review Form -->
+    <div class="col-lg-7">
+      <div class="p-4 bg-white rounded-3 border shadow-sm">
+        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+          <h5 class="fw-bold mb-0 text-dark">Record Reviewer Decision</h5>
+          <span class="badge bg-dark">Audited Action</span>
+        </div>
+
+        <!-- Reviewer Name -->
+        <div class="mb-4">
+          <label class="form-label small fw-bold text-muted">Reviewer Full Name / ID <span class="text-danger">*</span></label>
+          <div class="input-group">
+            <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
+            <input type="text" class="form-control" [(ngModel)]="reviewerName" placeholder="e.g. Atharv Khot (Brand Governance Lead)">
+          </div>
+          <div class="form-text small text-muted">Required for governance traceability and corporate compliance audits.</div>
+        </div>
+
+        <!-- Decision Options -->
+        <div class="mb-4">
+          <label class="form-label small fw-bold text-muted mb-2">Final Governance Decision <span class="text-danger">*</span></label>
+          <div class="row g-2">
+            <div *ngFor="let opt of decisionOptions" class="col-md-4">
+              <div class="decision-card p-3 rounded-3 border text-center h-100 cursor-pointer"
+                   [ngClass]="{
+                     'selected-approved': selectedDecision === opt.type && opt.type === 'Approved',
+                     'selected-changes': selectedDecision === opt.type && opt.type === 'ChangesRequested',
+                     'selected-rejected': selectedDecision === opt.type && opt.type === 'Rejected'
+                   }"
+                   (click)="selectedDecision = opt.type">
+                <i class="bi fs-2 mb-2 d-block" [ngClass]="opt.icon"></i>
+                <div class="fw-bold small">{{ opt.label }}</div>
+                <div class="small opacity-75 mt-1" style="font-size: 0.72rem;">{{ opt.desc }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reviewer Comments -->
+        <div class="mb-4">
+          <label class="form-label small fw-bold text-muted">Review Comments & Editorial Guidance</label>
+          <textarea class="form-control" rows="4" [(ngModel)]="comments"
+                    placeholder="Add specific rationale, required policy revisions, or publishing approval notes..."></textarea>
+        </div>
+
+        <!-- Submit CTA -->
+        <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+          <a [routerLink]="['/results', submissionId]" class="btn-white-secondary">
+            Cancel
+          </a>
+
+          <button type="button"
+                  class="btn-orange-primary"
+                  [disabled]="submitting()"
+                  (click)="submitDecision()"
+                  id="btn-save-record-decision">
+            <i class="bi" [ngClass]="submitting() ? 'bi-arrow-clockwise spin' : 'bi-check2-circle'"></i>
+            <span>{{ submitting() ? 'Saving Decision...' : 'Save & Record Decision' }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Submission Summary Preview -->
+    <div class="col-lg-5">
+      <div class="p-4 bg-white rounded-3 border shadow-sm mb-3">
+        <h6 class="fw-bold mb-3 text-dark pb-2 border-bottom">Content Under Review</h6>
+        <h6 class="fw-bold text-dark mb-1">{{ validationResult()?.submissionTitle }}</h6>
+        <span class="badge bg-secondary mb-3">{{ validationResult()?.contentType }}</span>
+
+        <p class="text-muted fst-italic small p-3 bg-light rounded border mb-3">
+          "{{ validationResult()?.originalContent }}"
+        </p>
+
+        <div class="d-flex justify-content-between align-items-center p-2 rounded bg-light border">
+          <span class="small fw-semibold text-muted">Overall AI Risk:</span>
+          <span class="badge-severity"
+                [ngClass]="{
+                  'severity-high': validationResult()?.overallRiskLevel === 'High',
+                  'severity-medium': validationResult()?.overallRiskLevel === 'Medium',
+                  'severity-low': validationResult()?.overallRiskLevel === 'Low'
+                }">
+            {{ validationResult()?.overallRiskLevel }} Risk
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

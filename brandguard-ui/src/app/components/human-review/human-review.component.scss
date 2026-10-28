@@ -1,0 +1,41 @@
+.human-review-page {
+  .decision-card {
+    cursor: pointer;
+    background: #ffffff;
+    transition: all 0.15s ease;
+
+    &:hover {
+      background: #f8fafc;
+      border-color: #94a3b8;
+    }
+
+    &.selected-approved {
+      background: #f0fdf4;
+      border-color: #22c55e !important;
+      color: #15803d;
+      box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+    }
+
+    &.selected-changes {
+      background: #fffbeb;
+      border-color: #f59e0b !important;
+      color: #b45309;
+      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+    }
+
+    &.selected-rejected {
+      background: #fef2f2;
+      border-color: #ef4444 !important;
+      color: #b91c1c;
+      box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+    }
+  }
+
+  .spin {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    100% { transform: rotate(360deg); }
+  }
+}

@@ -1,0 +1,124 @@
+<div class="app-container">
+  <!-- 1. COMPACT WHITE ICON-ONLY SIDEBAR (~68px wide) -->
+  <aside class="app-sidebar">
+    <!-- Brand Shield Logo -->
+    <a routerLink="/dashboard" class="sidebar-logo-link" title="BrandGuard AI Home">
+      <div class="brand-shield-icon">
+        <i class="bi bi-shield-check"></i>
+      </div>
+    </a>
+
+    <!-- Icon-Only Navigation Links with Tooltips -->
+    <nav class="sidebar-nav">
+      <!-- 1. Dashboard -->
+      <a routerLink="/dashboard"
+         routerLinkActive="active"
+         class="sidebar-icon-btn"
+         id="sidebar-nav-dashboard"
+         title="Dashboard">
+        <i class="bi bi-grid-1x2"></i>
+        <span class="nav-tooltip">Dashboard</span>
+      </a>
+
+      <!-- 2. Brand Guidelines -->
+      <a routerLink="/guidelines"
+         routerLinkActive="active"
+         class="sidebar-icon-btn"
+         id="sidebar-nav-guidelines"
+         title="Brand Guidelines">
+        <i class="bi bi-file-earmark-pdf"></i>
+        <span class="nav-tooltip">Brand Guidelines</span>
+      </a>
+
+      <!-- 3. Submit Content -->
+      <a routerLink="/submit"
+         routerLinkActive="active"
+         class="sidebar-icon-btn"
+         id="sidebar-nav-submit"
+         title="Submit Content">
+        <i class="bi bi-pencil-square"></i>
+        <span class="nav-tooltip">Submit Content</span>
+      </a>
+
+      <!-- 4. AI Validation Workspace -->
+      <button type="button"
+              (click)="navigateToValidation()"
+              class="sidebar-icon-btn"
+              id="sidebar-nav-validation"
+              title="AI Validation">
+        <i class="bi bi-shield-check"></i>
+        <span class="nav-tooltip">AI Validation</span>
+      </button>
+
+      <!-- 5. Human Review -->
+      <button type="button"
+              (click)="navigateToReview()"
+              class="sidebar-icon-btn"
+              id="sidebar-nav-review"
+              title="Human Review">
+        <i class="bi bi-person-check"></i>
+        <span class="nav-tooltip">Human Review</span>
+      </button>
+
+      <!-- 6. Review History -->
+      <a routerLink="/history"
+         routerLinkActive="active"
+         class="sidebar-icon-btn"
+         id="sidebar-nav-history"
+         title="Review History">
+        <i class="bi bi-clock-history"></i>
+        <span class="nav-tooltip">Review History</span>
+      </a>
+    </nav>
+
+    <!-- Bottom Avatar / Profile Badge -->
+    <div class="sidebar-footer">
+      <div class="sidebar-avatar" title="TechDuo — Lead QA & Reviewer">
+        TK
+      </div>
+    </div>
+  </aside>
+
+  <!-- 2. MAIN LAYOUT AREA -->
+  <div class="main-layout">
+    <!-- WHITE TOPBAR (~68px height) -->
+    <header class="app-topbar">
+      <!-- Left: Large Search Input -->
+      <div class="search-wrapper">
+        <i class="bi bi-search search-icon"></i>
+        <input type="text"
+               class="search-input"
+               placeholder="Search guidelines and content..."
+               [value]="searchQuery()"
+               (input)="onSearch($event)"
+               id="global-search-input">
+      </div>
+
+      <!-- Right: Status Indicator & Brand Identity -->
+      <div class="topbar-actions">
+        <!-- Live System Operational Status -->
+        <div class="status-indicator" title="ASP.NET Core .NET 9 API Active">
+          <span class="pulse-dot"></span>
+          <span>All Systems Operational</span>
+        </div>
+
+        <!-- Product Name & Brand Tagline -->
+        <div class="brand-title-badge d-none d-md-flex">
+          <span>BrandGuard</span>
+          <span class="brand-accent">AI</span>
+        </div>
+
+        <!-- Quick Primary Action Button -->
+        <a routerLink="/submit" class="btn-orange-primary shadow-sm" id="topbar-compare-content-btn">
+          <i class="bi bi-file-earmark-plus"></i>
+          <span>Compare Content</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- ROUTED VIEW CONTENT -->
+    <main class="app-content-body">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>

@@ -1,0 +1,33 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Node & Angular
+node_modules/
+dist/
+.angular/
+.npm/
+
+## Database & Temporary Uploads
+**/uploads/*
+!**/uploads/.gitkeep
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+## IDE & OS
+.vs/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.idea/
+Thumbs.db
+[Ee]xpress/
+

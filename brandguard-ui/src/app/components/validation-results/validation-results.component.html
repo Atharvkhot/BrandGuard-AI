@@ -1,0 +1,348 @@
+<div class="validation-results-page">
+  <!-- Loading state -->
+  <div *ngIf="loading()" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+    <h5 class="fw-bold text-dark mt-3">Evaluating Content Compliance...</h5>
+    <p class="text-muted small">Running cosine similarity retrieval against knowledge base and evaluating brand policies.</p>
+  </div>
+
+  <!-- Error state -->
+  <div *ngIf="!loading() && errorMessage()" class="alert alert-danger shadow-sm">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ errorMessage() }}
+    <div class="mt-2">
+      <a routerLink="/submit" class="btn btn-sm btn-outline-danger">Return to Content Submission</a>
+    </div>
+  </div>
+
+  <div *ngIf="!loading() && validationResult()">
+    <!-- Top Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+      <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <span class="badge bg-secondary">{{ validationResult()?.contentType }}</span>
+          <span class="text-muted small">Run ID: {{ validationResult()?.validationRunId | slice:0:8 }}</span>
+        </div>
+        <h3 class="fw-bold mb-0 text-dark">{{ validationResult()?.submissionTitle }}</h3>
+      </div>
+
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn-orange-primary" (click)="goToReview()">
+          <i class="bi bi-person-check-fill"></i> Proceed to Human Review
+        </button>
+      </div>
+    </div>
+
+    <!-- Summary Overview Banner -->
+    <div class="card-enterprise mb-4 p-4" [ngClass]="{
+      'border-danger bg-danger bg-opacity-10': validationResult()?.overallRiskLevel === 'High',
+      'border-warning bg-warning bg-opacity-10': validationResult()?.overallRiskLevel === 'Medium',
+      'border-success bg-success bg-opacity-10': validationResult()?.overallRiskLevel === 'Low'
+    }">
+      <div class="row align-items-center">
+        <div class="col-md-7">
+          <div class="d-flex align-items-center gap-3">
+            <div class="p-3 rounded-circle shadow-sm" [ngClass]="{
+              'bg-danger text-white': validationResult()?.overallRiskLevel === 'High',
+              'bg-warning text-dark': validationResult()?.overallRiskLevel === 'Medium',
+              'bg-success text-white': validationResult()?.overallRiskLevel === 'Low'
+            }">
+              <i class="bi fs-2" [ngClass]="{
+                'bi-shield-x': validationResult()?.overallRiskLevel === 'High',
+                'bi-shield-exclamation': validationResult()?.overallRiskLevel === 'Medium',
+                'bi-shield-check': validationResult()?.overallRiskLevel === 'Low'
+              }"></i>
+            </div>
+            <div>
+              <div class="text-uppercase small fw-bold" [ngClass]="{
+                'text-danger': validationResult()?.overallRiskLevel === 'High',
+                'text-warning text-darken': validationResult()?.overallRiskLevel === 'Medium',
+                'text-success': validationResult()?.overallRiskLevel === 'Low'
+              }">Overall Risk Classification</div>
+              <h2 class="fw-bold mb-0 text-dark">{{ validationResult()?.overallRiskLevel }} Risk</h2>
+              <div class="text-muted small mt-1">
+                {{ validationResult()?.totalFindings }} compliance findings flagged across brand guidelines & policies
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-5 mt-3 mt-md-0">
+          <div class="d-flex justify-content-md-end gap-3 text-center">
+            <div class="p-2 px-3 rounded bg-white border">
+              <div class="fw-bold text-danger fs-4">{{ validationResult()?.highRiskCount }}</div>
+              <div class="text-muted small text-uppercase">High Risk</div>
+            </div>
+            <div class="p-2 px-3 rounded bg-white border">
+              <div class="fw-bold text-warning fs-4">{{ validationResult()?.mediumRiskCount }}</div>
+              <div class="text-muted small text-uppercase">Medium Risk</div>
+            </div>
+            <div class="p-2 px-3 rounded bg-white border">
+              <div class="fw-bold text-success fs-4">{{ validationResult()?.lowRiskCount }}</div>
+              <div class="text-muted small text-uppercase">Low Risk</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Original Submitted Content Card -->
+    <div class="card-enterprise mb-4">
+      <div class="card-header-clean bg-light">
+        <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-file-text me-2"></i>Evaluated Marketing Copy</h6>
+      </div>
+      <div class="card-body">
+        <div class="p-3 bg-light rounded border font-mono small text-dark">
+          {{ validationResult()?.originalContent }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Mode Switcher Nav Tabs -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <ul class="nav nav-pills gap-2">
+        <li class="nav-item">
+          <button class="nav-link btn-sm" [ngClass]="{ 'active': activeMode() === 'standard' }" (click)="setMode('standard')">
+            <i class="bi bi-list-ul me-1"></i> Standard Full View
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link btn-sm" [ngClass]="{ 'active': activeMode() === 'guided' }" (click)="setMode('guided')">
+            <i class="bi bi-bullseye me-1"></i> Guided Focus Mode
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link btn-sm" [ngClass]="{ 'active': activeMode() === 'batch' }" (click)="setMode('batch')">
+            <i class="bi bi-check2-square me-1"></i> Quick Batch Mode
+          </button>
+        </li>
+      </ul>
+
+      <span class="text-muted small d-none d-md-inline">
+        Showing {{ validationResult()?.findings?.length }} validated findings
+      </span>
+    </div>
+
+    <!-- ================= MODE 1: STANDARD FULL VIEW ================= -->
+    <div *ngIf="activeMode() === 'standard'" class="standard-view">
+      <div *ngIf="validationResult()?.findings?.length === 0" class="card-enterprise p-5 text-center">
+        <i class="bi bi-check-circle-fill text-success display-4 mb-2"></i>
+        <h5 class="fw-bold text-dark">Zero Compliance Findings</h5>
+        <p class="text-muted small mb-3">This content fully aligns with indexed brand guidelines and policies.</p>
+        <div>
+          <button class="btn btn-success btn-sm px-4" (click)="goToReview()">Proceed to Approve</button>
+        </div>
+      </div>
+
+      <div *ngFor="let finding of validationResult()?.findings; let idx = index" class="card-enterprise mb-3 border-start border-4"
+           [ngClass]="{
+             'border-danger': finding.severity === 'High',
+             'border-warning': finding.severity === 'Medium',
+             'border-success': finding.severity === 'Low'
+           }">
+        <div class="card-header-clean bg-light d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-dark">#{{ idx + 1 }}</span>
+            <span class="fw-bold text-dark">{{ finding.issueType }}</span>
+          </div>
+
+          <span class="badge-risk" [ngClass]="{
+            'risk-high': finding.severity === 'High',
+            'risk-medium': finding.severity === 'Medium',
+            'risk-low': finding.severity === 'Low'
+          }">
+            {{ finding.severity }} Risk
+          </span>
+        </div>
+
+        <div class="card-body">
+          <!-- Flagged text -->
+          <div class="mb-3">
+            <div class="small fw-bold text-muted text-uppercase mb-1">Flagged Content Text</div>
+            <div class="p-2 rounded bg-light border text-danger fw-semibold">
+              <i class="bi bi-quote me-1"></i>{{ finding.originalText }}
+            </div>
+          </div>
+
+          <!-- Explanation -->
+          <div class="mb-3">
+            <div class="small fw-bold text-muted text-uppercase mb-1">Why This Matters (Explanation)</div>
+            <p class="mb-0 text-dark">{{ finding.explanation }}</p>
+          </div>
+
+          <!-- Evidence Quote from Guideline -->
+          <div class="mb-3">
+            <div class="small fw-bold text-muted text-uppercase mb-1">
+              <i class="bi bi-journal-bookmark-fill text-primary me-1"></i>Verified Policy Evidence
+              <span *ngIf="finding.pageNumber" class="badge bg-secondary ms-2">Page {{ finding.pageNumber }}</span>
+              <span *ngIf="finding.sourceGuidelineTitle" class="badge bg-light text-dark border ms-1">{{ finding.sourceGuidelineTitle }}</span>
+            </div>
+            <div class="p-3 rounded bg-info bg-opacity-10 border border-info border-opacity-25 small font-mono text-dark">
+              {{ finding.evidenceText }}
+            </div>
+          </div>
+
+          <!-- Suggested Actionable Fix -->
+          <div class="p-3 rounded bg-success bg-opacity-10 border border-success border-opacity-25">
+            <div class="small fw-bold text-success text-uppercase mb-1">
+              <i class="bi bi-lightbulb-fill me-1"></i>Suggested Correction
+            </div>
+            <div class="text-dark small fw-medium">{{ finding.suggestedFix }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= MODE 2: GUIDED FOCUS MODE ================= -->
+    <div *ngIf="activeMode() === 'guided'" class="guided-focus-view">
+      <div *ngIf="getCurrentFocusFinding(); let focusFinding">
+        <div class="card-enterprise shadow">
+          <div class="card-header-clean bg-light d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-cyan text-dark fw-bold">Guided Focus Mode</span>
+              <span class="fw-bold text-dark">Finding {{ currentFocusIndex() + 1 }} of {{ validationResult()?.findings?.length }}</span>
+            </div>
+
+            <span class="badge-risk" [ngClass]="{
+              'risk-high': focusFinding.severity === 'High',
+              'risk-medium': focusFinding.severity === 'Medium',
+              'risk-low': focusFinding.severity === 'Low'
+            }">
+              {{ focusFinding.severity }} Risk
+            </span>
+          </div>
+
+          <div class="card-body p-4">
+            <h4 class="fw-bold text-dark mb-3">{{ focusFinding.issueType }}</h4>
+
+            <!-- Flagged Text -->
+            <div class="mb-4">
+              <label class="small fw-bold text-muted text-uppercase mb-1">Affected Marketing Content</label>
+              <div class="p-3 bg-danger bg-opacity-10 border border-danger border-opacity-25 rounded text-danger fw-bold fs-5">
+                "{{ focusFinding.originalText }}"
+              </div>
+            </div>
+
+            <!-- Explanation -->
+            <div class="mb-4">
+              <label class="small fw-bold text-muted text-uppercase mb-1">Explanation</label>
+              <p class="fs-6 text-dark mb-0">{{ focusFinding.explanation }}</p>
+            </div>
+
+            <!-- Evidence Quote -->
+            <div class="mb-4">
+              <label class="small fw-bold text-muted text-uppercase mb-1">
+                <i class="bi bi-shield-lock text-primary me-1"></i>Evidence from Official Brand Guidelines
+                <span *ngIf="focusFinding.pageNumber" class="badge bg-secondary ms-2">Page {{ focusFinding.pageNumber }}</span>
+              </label>
+              <div class="p-3 bg-light rounded border font-mono small text-dark">
+                {{ focusFinding.evidenceText }}
+              </div>
+            </div>
+
+            <!-- Suggested Fix -->
+            <div class="p-3 rounded bg-success bg-opacity-10 border border-success border-opacity-25">
+              <label class="small fw-bold text-success text-uppercase mb-1">Actionable Fix</label>
+              <div class="text-dark fw-medium">{{ focusFinding.suggestedFix }}</div>
+            </div>
+          </div>
+
+          <!-- Guided Focus Nav Bar -->
+          <div class="card-footer bg-light p-3 d-flex justify-content-between align-items-center">
+            <button class="btn btn-outline-secondary btn-sm"
+                    [disabled]="currentFocusIndex() === 0"
+                    (click)="previousFocus()">
+              <i class="bi bi-chevron-left me-1"></i> Previous Finding
+            </button>
+
+            <div class="text-muted small">
+              Step <strong>{{ currentFocusIndex() + 1 }}</strong> of <strong>{{ validationResult()?.findings?.length }}</strong>
+            </div>
+
+            <button *ngIf="currentFocusIndex() < ((validationResult()?.findings?.length ?? 1) - 1)"
+                    class="btn btn-outline-primary btn-sm"
+                    (click)="nextFocus()">
+              Next Finding <i class="bi bi-chevron-right ms-1"></i>
+            </button>
+
+            <button *ngIf="currentFocusIndex() >= ((validationResult()?.findings?.length ?? 1) - 1)"
+                    class="btn btn-warning btn-sm fw-bold"
+                    (click)="goToReview()">
+              Complete & Review <i class="bi bi-arrow-right ms-1"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= MODE 3: QUICK BATCH MODE ================= -->
+    <div *ngIf="activeMode() === 'batch'" class="batch-view">
+      <div *ngIf="batchMessage()" class="alert alert-success py-2 px-3 small mb-3">
+        <i class="bi bi-check-circle-fill me-1"></i> {{ batchMessage() }}
+      </div>
+
+      <div class="card-enterprise">
+        <div class="card-header-clean bg-light d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center gap-3">
+            <h6 class="fw-bold mb-0 text-dark">Batch Finding Review</h6>
+            <button class="btn btn-sm btn-outline-primary"
+                    [disabled]="selectedFindingIds.size === 0"
+                    (click)="acknowledgeSelected()">
+              <i class="bi bi-check2-all me-1"></i> Mark Selected as Acknowledged ({{ selectedFindingIds.size }})
+            </button>
+          </div>
+
+          <button class="btn btn-warning btn-sm fw-bold" (click)="goToReview()">
+            Proceed to Final Sign-Off
+          </button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light text-muted small text-uppercase">
+              <tr>
+                <th style="width: 40px;" class="ps-3">
+                  <input type="checkbox" class="form-check-input" (change)="selectAll($event)">
+                </th>
+                <th>Issue Category</th>
+                <th>Severity</th>
+                <th>Flagged Snippet</th>
+                <th>Evidence Reference</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let f of validationResult()?.findings">
+                <td class="ps-3">
+                  <input type="checkbox" class="form-check-input"
+                         [checked]="isSelected(f.id)"
+                         (change)="toggleSelection(f.id)">
+                </td>
+                <td class="fw-semibold text-dark">{{ f.issueType }}</td>
+                <td>
+                  <span class="badge-risk" [ngClass]="{
+                    'risk-high': f.severity === 'High',
+                    'risk-medium': f.severity === 'Medium',
+                    'risk-low': f.severity === 'Low'
+                  }">{{ f.severity }}</span>
+                </td>
+                <td class="small text-danger fw-semibold">{{ f.originalText }}</td>
+                <td class="small text-muted font-mono">
+                  <span *ngIf="f.pageNumber" class="badge bg-light text-dark border me-1">p.{{ f.pageNumber }}</span>
+                  {{ f.evidenceText | slice:0:60 }}...
+                </td>
+                <td>
+                  <span *ngIf="f.acknowledged" class="badge bg-success bg-opacity-25 text-success">
+                    <i class="bi bi-check me-1"></i>Acknowledged
+                  </span>
+                  <span *ngIf="!f.acknowledged" class="badge bg-secondary bg-opacity-25 text-muted">
+                    Unreviewed
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
