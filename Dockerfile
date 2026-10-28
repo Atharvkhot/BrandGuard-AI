@@ -28,8 +28,8 @@ RUN dotnet publish "BrandGuardAI.API.csproj" -c Release -o /app/publish /p:UseAp
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 
-# Ensure directories for SQLite database and uploaded guideline PDFs exist
-RUN mkdir -p /app/uploads/guidelines /app/data
+# Ensure directories for SQLite database and uploaded guideline PDFs exist with full write permissions
+RUN mkdir -p /app/uploads/guidelines /app/data /tmp && chmod -R 777 /app/uploads /app/data /tmp
 
 # Configure Production Environment
 ENV ASPNETCORE_ENVIRONMENT=Production

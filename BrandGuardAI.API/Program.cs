@@ -111,6 +111,33 @@ app.UseCors("AllowFrontend");
 app.UseAuthorization();
 app.MapControllers();
 
+// Health Check Endpoint (does not require external AI call)
+app.MapGet("/health", async (ApplicationDbContext db) =>
+{
+    try
+    {
+        var rulesCount = await db.ValidationRules.CountAsync();
+        return Results.Ok(new
+        {
+            status = "Healthy",
+            timestamp = DateTime.UtcNow,
+            database = "Connected",
+            rulesConfigured = rulesCount,
+            version = "1.0.0"
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new
+        {
+            status = "Degraded",
+            timestamp = DateTime.UtcNow,
+            database = "Unavailable",
+            error = ex.Message
+        }, statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+}).WithName("HealthCheck");
+
 // Ensure Database is Created & Seeded
 using (var scope = app.Services.CreateScope())
 {
