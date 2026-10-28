@@ -38,10 +38,34 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.SetIsOriginAllowed(_ => true)
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials();
+        if (builder.Environment.IsDevelopment())
+        {
+            policy.WithOrigins(
+                    "http://localhost:4200",
+                    "http://127.0.0.1:4200",
+                    "http://localhost:3000",
+                    "https://brand-guard-ai-psi.vercel.app")
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials();
+        }
+        else
+        {
+            // Production: Restrict to configured origins (default to Vercel production frontend)
+            var configuredOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                ?? new[] { "https://brand-guard-ai-psi.vercel.app" };
+
+            var sanitizedOrigins = configuredOrigins
+                .Where(o => !string.IsNullOrWhiteSpace(o))
+                .Select(o => o.TrimEnd('/'))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            policy.WithOrigins(sanitizedOrigins)
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials();
+        }
     });
 });
 
@@ -111,6 +135,13 @@ using (var scope = app.Services.CreateScope())
     {
         logger.LogWarning(ex, "Initial SQL Server connection failed. Attempting SQLite local storage fallback.");
     }
+}
+
+// Ensure runtime directories exist
+var uploadsDir = Path.Combine(app.Environment.ContentRootPath, "uploads", "guidelines");
+if (!Directory.Exists(uploadsDir))
+{
+    Directory.CreateDirectory(uploadsDir);
 }
 
 app.Run();
