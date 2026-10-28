@@ -41,6 +41,12 @@ public class LlmValidationService : ILlmValidationService
                            : "https://api.openai.com/v1/chat/completions");
 
         var model = _configuration["AI:ChatModel"] ?? "google/gemini-2.5-flash";
+        var maxTokensConfig = _configuration["AI:MaxOutputTokens"];
+        int maxOutputTokens = 2048;
+        if (!string.IsNullOrWhiteSpace(maxTokensConfig) && int.TryParse(maxTokensConfig, out var parsedTokens) && parsedTokens > 0)
+        {
+            maxOutputTokens = parsedTokens;
+        }
 
         if (!string.IsNullOrWhiteSpace(apiKey))
         {
@@ -58,8 +64,14 @@ public class LlmValidationService : ILlmValidationService
                         new { role = "user", content = userPrompt }
                     },
                     response_format = new { type = "json_object" },
-                    temperature = 0.1
+                    temperature = 0.1,
+                    max_tokens = maxOutputTokens
                 };
+
+                _logger.LogInformation(
+                    "Submitting validation request to AI provider. Model: {Model}, MaxOutputTokens: {MaxOutputTokens}",
+                    model,
+                    maxOutputTokens);
 
                 using var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);
                 httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
@@ -71,6 +83,12 @@ public class LlmValidationService : ILlmValidationService
                 httpRequest.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
                 using var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
+                _logger.LogInformation(
+                    "AI provider response status: HTTP {StatusCode} for model {Model} (Requested MaxOutputTokens: {MaxOutputTokens})",
+                    (int)response.StatusCode,
+                    model,
+                    maxOutputTokens);
+
                 if (response.IsSuccessStatusCode)
                 {
                     var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -86,7 +104,10 @@ public class LlmValidationService : ILlmValidationService
                         var parsedResponse = ParseAndVerifyLlmResponse(contentString, request.RetrievedChunks);
                         if (parsedResponse != null)
                         {
-                            _logger.LogInformation("Successfully completed external LLM validation with {Count} verified findings", parsedResponse.Findings.Count);
+                            _logger.LogInformation(
+                                "OpenRouter AI validation succeeded with {Count} verified findings using model {Model}",
+                                parsedResponse.Findings.Count,
+                                model);
                             return parsedResponse;
                         }
                     }
@@ -94,16 +115,26 @@ public class LlmValidationService : ILlmValidationService
                 else
                 {
                     var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-                    _logger.LogWarning("LLM Provider returned error HTTP {StatusCode}: {ErrorBody}. Invoking intelligent fallback synthesizer.", response.StatusCode, errorBody);
+                    _logger.LogWarning(
+                        "OpenRouter AI failed with HTTP {StatusCode}: {ErrorBody}. Activating intelligent fallback engine for model {Model}.",
+                        (int)response.StatusCode,
+                        errorBody,
+                        model);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Exception calling external LLM. Falling back to local intelligent synthesizer.");
+                _logger.LogWarning(
+                    ex,
+                    "Exception calling AI provider with model {Model}. Falling back to local intelligent synthesizer.",
+                    model);
             }
         }
 
         // Resilient fallback synthesizer using retrieved chunks and heuristic brand rules
+        _logger.LogInformation(
+            "Fallback validation engine executed for content '{Title}' (AI provider succeeded: False)",
+            request.ContentTitle);
         return FallbackSynthesizer(request);
     }
 
