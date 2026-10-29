@@ -320,6 +320,18 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+  formatContentType(type?: string): string {
+    if (!type) return 'General';
+    const normalized = type.replace(/\s+/g, '');
+    if (normalized === 'SocialMediaPost') return 'Social Media Post';
+    if (normalized === 'EmailNewsletter' || normalized === 'EmailCampaign') return 'Email Newsletter';
+    if (normalized === 'BlogArticle') return 'Blog Article';
+    if (normalized === 'LandingPage' || normalized === 'WebsiteContent') return 'Website / Landing Page';
+    if (normalized === 'PressRelease') return 'Press Release';
+    if (normalized === 'ProductDescription') return 'Product Description';
+    return type;
+  }
+
   closeGuidelineInspector(): void {
     this.viewingGuideline.set(null);
   }

@@ -117,7 +117,7 @@ export interface ReviewHistoryItemDto {
   contentTitle: string;
   contentType: string;
   reviewerName: string;
-  decision: ReviewDecisionType;
+  decision: ReviewDecisionType | ContentSubmissionStatus | string;
   comments: string;
   reviewedAt: string;
   overallRiskLevel?: RiskSeverity;

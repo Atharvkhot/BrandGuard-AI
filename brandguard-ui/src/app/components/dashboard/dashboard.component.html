@@ -239,7 +239,7 @@
                       [ngModel]="selectedSubmissionId()"
                       (ngModelChange)="selectSubmission($event)">
                 <option *ngFor="let s of submissions()" [value]="s.id">
-                  {{ s.title }} ({{ s.contentType }})
+                  {{ s.title }} ({{ formatContentType(s.contentType) }})
                 </option>
               </select>
             </div>
