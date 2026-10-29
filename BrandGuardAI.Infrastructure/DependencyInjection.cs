@@ -17,45 +17,76 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
-        var dbProvider = configuration["Database:Provider"] ?? "Auto";
-        var sqlServerConn = configuration.GetConnectionString("DefaultConnection");
-        var sqliteConn = configuration.GetConnectionString("SqliteConnection") ?? "Data Source=BrandGuardAI.db";
+        var dbProvider = configuration["DATABASE_PROVIDER"] 
+            ?? configuration["Database:Provider"] 
+            ?? "Sqlite";
 
-        bool useSqlite;
+        var sqlServerConn = configuration["SQLSERVER_CONNECTION_STRING"]
+            ?? configuration.GetConnectionString("DefaultConnection")
+            ?? configuration["ConnectionStrings:DefaultConnection"];
 
-        if (string.Equals(dbProvider, "SqlServer", StringComparison.OrdinalIgnoreCase))
+        var sqliteConn = configuration["SQLITE_CONNECTION_STRING"]
+            ?? configuration.GetConnectionString("SqliteConnection") 
+            ?? configuration["ConnectionStrings:SqliteConnection"]
+            ?? "Data Source=BrandGuardAI.db";
+
+        var postgresConn = configuration["POSTGRES_CONNECTION_STRING"]
+            ?? configuration["POSTGRESQL_CONNECTION_STRING"]
+            ?? configuration.GetConnectionString("PostgreSqlConnection")
+            ?? configuration["ConnectionStrings:PostgreSqlConnection"];
+
+        string selectedProvider;
+
+        if (string.Equals(dbProvider, "PostgreSql", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(dbProvider, "Postgres", StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(postgresConn))
+            {
+                throw new InvalidOperationException("Database provider is configured as 'PostgreSql', but neither ConnectionStrings:PostgreSqlConnection nor POSTGRES_CONNECTION_STRING was provided.");
+            }
+            selectedProvider = "PostgreSql";
+            AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+        }
+        else if (string.Equals(dbProvider, "SqlServer", StringComparison.OrdinalIgnoreCase))
         {
             if (string.IsNullOrWhiteSpace(sqlServerConn))
             {
                 throw new InvalidOperationException("Database:Provider is explicitly configured as 'SqlServer', but ConnectionStrings:DefaultConnection is empty or missing.");
             }
-            useSqlite = false;
+            selectedProvider = "SqlServer";
         }
         else if (string.Equals(dbProvider, "Sqlite", StringComparison.OrdinalIgnoreCase))
         {
-            useSqlite = true;
+            selectedProvider = "Sqlite";
         }
-        else // "Auto"
+        else // "Auto" or any fallback
         {
-            useSqlite = true;
-            if (!string.IsNullOrWhiteSpace(sqlServerConn))
+            if (!string.IsNullOrWhiteSpace(postgresConn))
+            {
+                selectedProvider = "PostgreSql";
+                AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+            }
+            else if (!string.IsNullOrWhiteSpace(sqlServerConn))
             {
                 try
                 {
                     using var testConn = new SqlConnection(sqlServerConn);
                     testConn.Open();
-                    useSqlite = false;
+                    selectedProvider = "SqlServer";
                 }
                 catch
                 {
-                    // SQL Server is unreachable, fall back to SQLite for seamless resilience
-                    useSqlite = true;
+                    selectedProvider = "Sqlite";
                 }
+            }
+            else
+            {
+                selectedProvider = "Sqlite";
             }
         }
 
         // If SQLite is used, ensure the target folder exists (useful for container volumes e.g. /app/data)
-        if (useSqlite)
+        if (selectedProvider == "Sqlite")
         {
             try
             {
@@ -78,13 +109,18 @@ public static class DependencyInjection
 
         services.AddDbContext<ApplicationDbContext>(options =>
         {
-            if (useSqlite)
+            switch (selectedProvider)
             {
-                options.UseSqlite(sqliteConn);
-            }
-            else
-            {
-                options.UseSqlServer(sqlServerConn, b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName));
+                case "PostgreSql":
+                    options.UseNpgsql(postgresConn);
+                    break;
+                case "SqlServer":
+                    options.UseSqlServer(sqlServerConn, b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName));
+                    break;
+                case "Sqlite":
+                default:
+                    options.UseSqlite(sqliteConn);
+                    break;
             }
         });
 

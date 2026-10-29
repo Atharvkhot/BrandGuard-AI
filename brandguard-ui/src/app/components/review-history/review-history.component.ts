@@ -110,6 +110,9 @@ export class ReviewHistoryComponent implements OnInit {
           }
         }
 
+        // Sort newest submissions and reviews to the top
+        combined.sort((a, b) => new Date(b.reviewedAt || 0).getTime() - new Date(a.reviewedAt || 0).getTime());
+
         this.history.set(combined);
         this.loading.set(false);
       },

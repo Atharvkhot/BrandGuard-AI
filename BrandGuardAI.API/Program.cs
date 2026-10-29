@@ -114,6 +114,7 @@ app.MapControllers();
 // Health Check Endpoint (does not require external AI call)
 app.MapGet("/health", async (ApplicationDbContext db) =>
 {
+    var providerName = db.Database.ProviderName ?? "Unknown";
     try
     {
         var rulesCount = await db.ValidationRules.CountAsync();
@@ -122,6 +123,7 @@ app.MapGet("/health", async (ApplicationDbContext db) =>
             status = "Healthy",
             timestamp = DateTime.UtcNow,
             database = "Connected",
+            provider = providerName,
             rulesConfigured = rulesCount,
             version = "1.0.0"
         });
@@ -133,6 +135,7 @@ app.MapGet("/health", async (ApplicationDbContext db) =>
             status = "Degraded",
             timestamp = DateTime.UtcNow,
             database = "Unavailable",
+            provider = providerName,
             error = ex.Message
         }, statusCode: StatusCodes.Status503ServiceUnavailable);
     }
@@ -142,9 +145,12 @@ app.MapGet("/health", async (ApplicationDbContext db) =>
 using (var scope = app.Services.CreateScope())
 {
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var providerName = dbContext.Database.ProviderName ?? "Unknown";
+
     try
     {
-        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        logger.LogInformation("Database initialization starting. Active Provider: {Provider}", providerName);
         dbContext.Database.EnsureCreated();
         
         // Sync updated rule pattern if existing
@@ -156,11 +162,11 @@ using (var scope = app.Services.CreateScope())
             logger.LogInformation("Updated Superlative Claims Verification rule pattern in database.");
         }
 
-        logger.LogInformation("Database verified and initialized successfully.");
+        logger.LogInformation("Database verified and initialized successfully. Active Provider: {Provider}", providerName);
     }
     catch (Exception ex)
     {
-        logger.LogWarning(ex, "Initial SQL Server connection failed. Attempting SQLite local storage fallback.");
+        logger.LogError(ex, "Database verification or initialization failed for Provider: {Provider}", providerName);
     }
 }
 
