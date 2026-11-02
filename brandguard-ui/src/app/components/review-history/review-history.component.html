@@ -100,7 +100,7 @@
             <th>Risk Level</th>
             <th>Editorial Comments</th>
             <th>Timestamp</th>
-            <th class="text-end pe-4">Actions</th>
+            <th class="text-end pe-4 col-actions">Actions</th>
           </tr>
         </thead>
         <tbody class="small">
@@ -149,15 +149,24 @@
             <td class="small text-muted font-monospace">
               {{ item.reviewedAt | date:'medium' }}
             </td>
-            <td class="text-end pe-4">
-              <a *ngIf="item.decision === 'PendingReview'"
-                 [routerLink]="['/review', item.contentSubmissionId]"
-                 class="btn btn-sm btn-orange-primary me-2">
-                <i class="bi bi-person-check"></i> Review
-              </a>
-              <a [routerLink]="['/results', item.contentSubmissionId]" class="btn btn-sm btn-white-secondary">
-                <i class="bi bi-eye"></i> View Run
-              </a>
+            <td class="text-end pe-4 col-actions">
+              <div class="table-row-actions">
+                <a *ngIf="item.decision === 'PendingReview'"
+                   [routerLink]="['/review', item.contentSubmissionId]"
+                   class="btn-table-action btn-table-review"
+                   id="btn-table-review-{{ item.contentSubmissionId }}"
+                   title="Perform Human Review">
+                  <i class="bi bi-person-check"></i>
+                  <span>Review</span>
+                </a>
+                <a [routerLink]="['/results', item.contentSubmissionId]"
+                   class="btn-table-action btn-table-view"
+                   id="btn-table-view-{{ item.contentSubmissionId }}"
+                   title="View Validation Run">
+                  <i class="bi bi-eye"></i>
+                  <span>View Run</span>
+                </a>
+              </div>
             </td>
           </tr>
         </tbody>
