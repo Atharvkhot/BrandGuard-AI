@@ -10,7 +10,11 @@ import {
   ValidationResultDto,
   FindingDto,
   ReviewDecisionType,
-  SubmitReviewDecisionDto
+  SubmitReviewDecisionDto,
+  GovernanceIntelligenceDto,
+  DailyViolationTrendDto,
+  ViolatedGuidelineDto,
+  GovernanceHealthScoreDto
 } from '../../models/brandguard.models';
 
 export type WorkspaceTab =
@@ -20,16 +24,18 @@ export type WorkspaceTab =
   | 'risk'
   | 'compliance'
   | 'corrections'
-  | 'review';
+  | 'review'
+  | 'intelligence';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
 export class DashboardComponent implements OnInit {
+  protected readonly Math = Math;
   private api = inject(ApiService);
   private router = inject(Router);
 
@@ -77,6 +83,14 @@ export class DashboardComponent implements OnInit {
   // Clipboard Feedback
   copyFeedback = signal<string | null>(null);
 
+  // Governance Intelligence State
+  intelligence = signal<GovernanceIntelligenceDto | null>(null);
+  loadingIntelligence = signal<boolean>(false);
+  selectedDays = signal<number>(30);
+  intelligenceError = signal<string | null>(null);
+  hoveredTrendDay = signal<DailyViolationTrendDto | null>(null);
+  showScoreExplainer = signal<boolean>(false);
+
   // Computed Properties
   wordCount = computed(() => {
     const text = this.newContentText.trim();
@@ -99,6 +113,54 @@ export class DashboardComponent implements OnInit {
   loadInitialData(): void {
     this.loadGuidelines();
     this.loadSubmissions();
+    this.loadIntelligence(30);
+  }
+
+  loadIntelligence(days?: number): void {
+    const d = days ?? this.selectedDays();
+    this.selectedDays.set(d);
+    this.loadingIntelligence.set(true);
+    this.intelligenceError.set(null);
+
+    this.api.getGovernanceIntelligence(d).subscribe({
+      next: (data) => {
+        this.intelligence.set(data);
+        this.loadingIntelligence.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to load governance intelligence', err);
+        this.intelligenceError.set('Could not load governance telemetry. Please check the backend connection.');
+        this.loadingIntelligence.set(false);
+      }
+    });
+  }
+
+  changeDaysFilter(days: number): void {
+    this.loadIntelligence(days);
+  }
+
+  refreshIntelligence(): void {
+    this.loadIntelligence(this.selectedDays());
+  }
+
+  toggleScoreExplainer(): void {
+    this.showScoreExplainer.update(v => !v);
+  }
+
+  setHoveredTrendDay(day: DailyViolationTrendDto | null): void {
+    this.hoveredTrendDay.set(day);
+  }
+
+  getMaxDailyFindings(): number {
+    const trends = this.intelligence()?.violationTrends ?? [];
+    if (trends.length === 0) return 5;
+    const maxVal = Math.max(...trends.map(t => t.totalFindings));
+    return Math.max(maxVal, 4);
+  }
+
+  getBarHeightPercent(count: number, max: number): number {
+    if (!max || max <= 0 || !count || count <= 0) return 0;
+    return Math.min(Math.round((count / max) * 100), 100);
   }
 
   loadGuidelines(): void {
@@ -196,6 +258,7 @@ export class DashboardComponent implements OnInit {
           text: `Review decision "${res.decision}" recorded by ${res.reviewerName}. Status updated in database.`
         });
         this.loadSubmissions();
+        this.loadIntelligence(this.selectedDays());
         setTimeout(() => this.reviewMessage.set(null), 5000);
       },
       error: (err) => {

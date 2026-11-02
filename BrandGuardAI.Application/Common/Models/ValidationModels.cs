@@ -39,6 +39,14 @@ public record LlmValidationResponse(
     string? SuggestedToneAdjustment
 );
 
+public static class EvidenceProvenanceTypes
+{
+    public const string DirectGuidelineMatch = "DirectGuidelineMatch";
+    public const string DeterministicRule = "DeterministicRule";
+    public const string UnverifiedAIClaim = "UnverifiedAIClaim";
+    public const string NoEvidence = "NoEvidence";
+}
+
 public record FindingDto(
     Guid Id,
     Guid ValidationRunId,
@@ -52,7 +60,12 @@ public record FindingDto(
     string? SourceGuidelineTitle,
     int? PageNumber,
     string? SectionTitle,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    string EvidenceProvenance = EvidenceProvenanceTypes.NoEvidence,
+    bool HasVerifiedEvidence = false,
+    bool IsAcknowledged = false,
+    DateTime? AcknowledgedAt = null,
+    string? AcknowledgedBy = null
 );
 
 public record ValidationResultDto(

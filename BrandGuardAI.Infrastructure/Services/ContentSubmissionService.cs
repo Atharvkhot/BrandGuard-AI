@@ -176,21 +176,70 @@ public class ContentSubmissionService : IContentSubmissionService
         var medCount = run.Findings.Count(f => f.Severity == RiskSeverity.Medium);
         var lowCount = run.Findings.Count(f => f.Severity == RiskSeverity.Low);
 
-        var findings = run.Findings.Select(f => new FindingDto(
-            f.Id,
-            f.ValidationRunId,
-            f.GuidelineChunkId,
-            f.IssueType,
-            f.Severity,
-            f.OriginalText,
-            f.Explanation,
-            f.SuggestedFix,
-            f.EvidenceText,
-            f.GuidelineChunk?.BrandGuideline?.Title ?? "Brand Guideline",
-            f.GuidelineChunk?.PageNumber,
-            f.GuidelineChunk?.SectionTitle,
-            f.CreatedAt
-        )).ToList();
+        var activeRuleNames = await _context.ValidationRules
+            .Select(r => r.RuleName)
+            .ToListAsync(cancellationToken);
+
+        var findings = run.Findings.Select(f =>
+        {
+            bool isDeterministic = activeRuleNames.Contains(f.IssueType, StringComparer.OrdinalIgnoreCase);
+            bool hasValidChunk = f.GuidelineChunkId.HasValue 
+                && f.GuidelineChunk != null 
+                && f.GuidelineChunk.BrandGuideline != null
+                && f.GuidelineChunk.BrandGuideline.IsActive;
+
+            string provenance;
+            bool hasVerifiedEvidence;
+
+            if (isDeterministic)
+            {
+                provenance = EvidenceProvenanceTypes.DeterministicRule;
+                hasVerifiedEvidence = true;
+            }
+            else if (hasValidChunk && !string.IsNullOrWhiteSpace(f.EvidenceText))
+            {
+                provenance = EvidenceProvenanceTypes.DirectGuidelineMatch;
+                hasVerifiedEvidence = true;
+            }
+            else if (!string.IsNullOrWhiteSpace(f.OriginalText) || !string.IsNullOrWhiteSpace(f.Explanation))
+            {
+                provenance = EvidenceProvenanceTypes.UnverifiedAIClaim;
+                hasVerifiedEvidence = false;
+            }
+            else
+            {
+                provenance = EvidenceProvenanceTypes.NoEvidence;
+                hasVerifiedEvidence = false;
+            }
+
+            string? guidelineTitle = hasValidChunk
+                ? f.GuidelineChunk!.BrandGuideline!.Title
+                : (isDeterministic ? "Configured Governance Policy" : null);
+
+            int? pageNumber = hasValidChunk ? f.GuidelineChunk?.PageNumber : null;
+            string? sectionTitle = hasValidChunk ? f.GuidelineChunk?.SectionTitle : null;
+
+            return new FindingDto(
+                f.Id,
+                f.ValidationRunId,
+                hasValidChunk ? f.GuidelineChunkId : null,
+                f.IssueType,
+                f.Severity,
+                f.OriginalText,
+                f.Explanation,
+                f.SuggestedFix,
+                hasVerifiedEvidence ? f.EvidenceText : string.Empty,
+                guidelineTitle,
+                pageNumber,
+                sectionTitle,
+                f.CreatedAt,
+                provenance,
+                hasVerifiedEvidence,
+                f.IsAcknowledged,
+                f.AcknowledgedAt,
+                f.AcknowledgedBy
+            );
+        }).ToList();
 
         return new ValidationResultDto(
             run.Id,

@@ -3,6 +3,10 @@
     cursor: pointer;
     background: #ffffff;
     transition: all 0.15s ease;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 
     &:hover {
       background: #f8fafc;

@@ -86,14 +86,14 @@ public class ValidationOrchestrator : IValidationOrchestrator
             {
                 // Match with closest retrieved chunk if available
                 var matchingChunk = retrievedChunks.FirstOrDefault(c =>
-                    c.ChunkText.Contains(det.MatchedText, StringComparison.OrdinalIgnoreCase) ||
-                    (det.SourceGuidelineId.HasValue && c.GuidelineId == det.SourceGuidelineId.Value));
+                    (det.SourceGuidelineId.HasValue && c.GuidelineId == det.SourceGuidelineId.Value) ||
+                    (!string.IsNullOrWhiteSpace(det.MatchedText) && det.MatchedText.Length >= 4 && c.ChunkText.Contains(det.MatchedText, StringComparison.OrdinalIgnoreCase)));
 
                 var finding = new ValidationFinding
                 {
                     Id = Guid.NewGuid(),
                     ValidationRunId = validationRun.Id,
-                    GuidelineChunkId = matchingChunk?.ChunkId ?? retrievedChunks.FirstOrDefault()?.ChunkId,
+                    GuidelineChunkId = matchingChunk?.ChunkId,
                     IssueType = det.RuleName,
                     Severity = det.Severity,
                     OriginalText = det.MatchedText,
@@ -119,23 +119,17 @@ public class ValidationOrchestrator : IValidationOrchestrator
                 }
 
                 Guid? verifiedChunkId = null;
-                string evidence = llmFinding.EvidenceQuote ?? string.Empty;
+                string evidence = string.Empty;
 
+                // Strict citation verification against retrieved chunks
                 if (llmFinding.CitedChunkId.HasValue &&
                     retrievedChunks.Any(c => c.ChunkId == llmFinding.CitedChunkId.Value))
                 {
                     verifiedChunkId = llmFinding.CitedChunkId.Value;
                     var citedChunk = retrievedChunks.First(c => c.ChunkId == llmFinding.CitedChunkId.Value);
-                    if (string.IsNullOrWhiteSpace(evidence))
-                    {
-                        evidence = citedChunk.ChunkText;
-                    }
-                }
-                else if (retrievedChunks.Count > 0)
-                {
-                    var fallbackChunk = retrievedChunks.First();
-                    verifiedChunkId = fallbackChunk.ChunkId;
-                    evidence = string.IsNullOrWhiteSpace(evidence) ? fallbackChunk.ChunkText : evidence;
+                    evidence = !string.IsNullOrWhiteSpace(llmFinding.EvidenceQuote)
+                        ? llmFinding.EvidenceQuote
+                        : citedChunk.ChunkText;
                 }
 
                 var finding = new ValidationFinding
@@ -190,6 +184,7 @@ public class ValidationOrchestrator : IValidationOrchestrator
             var lowCount = mergedFindings.Count(f => f.Severity == RiskSeverity.Low);
 
             var chunkDict = retrievedChunks.ToDictionary(c => c.ChunkId, c => c);
+            var deterministicRuleNames = deterministicResults.Select(d => d.RuleName).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             var findingDtos = mergedFindings.Select(f =>
             {
@@ -199,20 +194,59 @@ public class ValidationOrchestrator : IValidationOrchestrator
                     chunkDict.TryGetValue(f.GuidelineChunkId.Value, out chunk);
                 }
 
+                bool isDeterministic = deterministicRuleNames.Contains(f.IssueType);
+                bool hasVerifiedChunk = f.GuidelineChunkId.HasValue && chunk != null && !string.IsNullOrWhiteSpace(f.EvidenceText);
+
+                string provenance;
+                bool hasVerifiedEvidence;
+
+                if (isDeterministic)
+                {
+                    provenance = EvidenceProvenanceTypes.DeterministicRule;
+                    hasVerifiedEvidence = true;
+                }
+                else if (hasVerifiedChunk)
+                {
+                    provenance = EvidenceProvenanceTypes.DirectGuidelineMatch;
+                    hasVerifiedEvidence = true;
+                }
+                else if (!string.IsNullOrWhiteSpace(f.OriginalText) || !string.IsNullOrWhiteSpace(f.Explanation))
+                {
+                    provenance = EvidenceProvenanceTypes.UnverifiedAIClaim;
+                    hasVerifiedEvidence = false;
+                }
+                else
+                {
+                    provenance = EvidenceProvenanceTypes.NoEvidence;
+                    hasVerifiedEvidence = false;
+                }
+
+                string? guidelineTitle = hasVerifiedChunk
+                    ? chunk!.GuidelineTitle
+                    : (isDeterministic ? (chunk?.GuidelineTitle ?? "Configured Governance Policy") : null);
+
+                int? pageNumber = hasVerifiedChunk ? chunk?.PageNumber : (isDeterministic ? chunk?.PageNumber : null);
+                string? sectionTitle = hasVerifiedChunk ? chunk?.SectionTitle : (isDeterministic ? chunk?.SectionTitle : null);
+
                 return new FindingDto(
                     f.Id,
                     f.ValidationRunId,
-                    f.GuidelineChunkId,
+                    hasVerifiedChunk ? f.GuidelineChunkId : null,
                     f.IssueType,
                     f.Severity,
                     f.OriginalText,
                     f.Explanation,
                     f.SuggestedFix,
-                    f.EvidenceText,
-                    chunk?.GuidelineTitle ?? "Corporate Brand Policy",
-                    chunk?.PageNumber,
-                    chunk?.SectionTitle,
-                    f.CreatedAt
+                    hasVerifiedEvidence ? f.EvidenceText : string.Empty,
+                    guidelineTitle,
+                    pageNumber,
+                    sectionTitle,
+                    f.CreatedAt,
+                    provenance,
+                    hasVerifiedEvidence,
+                    f.IsAcknowledged,
+                    f.AcknowledgedAt,
+                    f.AcknowledgedBy
                 );
             }).ToList();
 

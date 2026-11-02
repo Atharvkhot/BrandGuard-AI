@@ -23,6 +23,12 @@ export class ReviewHistoryComponent implements OnInit {
 
   selectedFilter = signal<string>('ALL');
 
+  allCount = computed(() => this.history().length);
+  pendingCount = computed(() => this.history().filter(h => (h.decision || '').replace(/\s+/g, '').toUpperCase() === 'PENDINGREVIEW').length);
+  approvedCount = computed(() => this.history().filter(h => (h.decision || '').replace(/\s+/g, '').toUpperCase() === 'APPROVED').length);
+  changesRequestedCount = computed(() => this.history().filter(h => (h.decision || '').replace(/\s+/g, '').toUpperCase() === 'CHANGESREQUESTED').length);
+  rejectedCount = computed(() => this.history().filter(h => (h.decision || '').replace(/\s+/g, '').toUpperCase() === 'REJECTED').length);
+
   filteredHistory = computed(() => {
     const list = this.history();
     const filter = this.selectedFilter().toUpperCase();

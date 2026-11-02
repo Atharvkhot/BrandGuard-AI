@@ -15,6 +15,11 @@ public class ValidationFinding
     public string EvidenceText { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    // Acknowledgment tracking for Human Review Quick Batch mode
+    public bool IsAcknowledged { get; set; } = false;
+    public DateTime? AcknowledgedAt { get; set; }
+    public string? AcknowledgedBy { get; set; }
+
     // Navigation properties
     public ValidationRun? ValidationRun { get; set; }
     public GuidelineChunk? GuidelineChunk { get; set; }

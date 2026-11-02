@@ -61,9 +61,9 @@
         </div>
 
         <!-- Action Buttons -->
-        <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+        <div class="d-flex flex-column-reverse flex-sm-row justify-content-between align-items-stretch align-items-sm-center gap-2 pt-3 border-top">
           <button type="button"
-                  class="btn-white-secondary"
+                  class="btn-white-secondary justify-content-center"
                   [disabled]="validating() || submitting()"
                   (click)="saveDraft()">
             <i class="bi bi-file-earmark-arrow-down"></i>
@@ -71,7 +71,7 @@
           </button>
 
           <button type="button"
-                  class="btn-orange-primary"
+                  class="btn-orange-primary justify-content-center"
                   [disabled]="validating() || submitting()"
                   (click)="submitAndValidate()"
                   id="btn-validate-content-page">

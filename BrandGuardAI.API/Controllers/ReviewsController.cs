@@ -1,6 +1,7 @@
 using BrandGuardAI.Application.Common.Interfaces;
 using BrandGuardAI.Application.DTOs;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace BrandGuardAI.API.Controllers;
 
@@ -19,14 +20,29 @@ public class ReviewsController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>
+    /// Submits a human review decision for a content submission.
+    /// Note: In this public hackathon demo, ReviewerName is an unauthenticated, self-reported audit label.
+    /// </summary>
     [HttpPost]
+    [EnableRateLimiting("ReviewDecisionPolicy")]
     public async Task<ActionResult<ReviewDecisionDto>> SubmitDecision(
         [FromBody] SubmitReviewDecisionDto dto,
         CancellationToken cancellationToken)
     {
+        if (dto == null)
+        {
+            return BadRequest(new { error = "Review decision payload is required." });
+        }
+
         if (string.IsNullOrWhiteSpace(dto.ReviewerName))
         {
-            return BadRequest(new { error = "Reviewer name is required." });
+            return BadRequest(new { error = "Reviewer name is required (self-reported display name for demo audit history)." });
+        }
+
+        if (dto.ContentSubmissionId == Guid.Empty)
+        {
+            return BadRequest(new { error = "Valid content submission ID is required." });
         }
 
         try
@@ -65,5 +81,77 @@ public class ReviewsController : ControllerBase
             return NotFound(new { error = $"No review decision found for submission {submissionId}." });
         }
         return Ok(decision);
+    }
+
+    /// <summary>
+    /// Acknowledges findings in batch.
+    /// Note: AcknowledgedBy is a self-reported display name for demo audit history.
+    /// </summary>
+    [HttpPost("findings/acknowledge")]
+    [EnableRateLimiting("ReviewDecisionPolicy")]
+    public async Task<ActionResult<AcknowledgeFindingsResultDto>> AcknowledgeFindings(
+        [FromBody] AcknowledgeFindingsRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request == null || request.FindingIds == null || request.FindingIds.Count == 0)
+        {
+            return BadRequest(new { error = "At least one finding ID must be provided." });
+        }
+
+        try
+        {
+            var result = await _reviewService.AcknowledgeFindingsAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error acknowledging validation findings in batch.");
+            return StatusCode(500, new { error = "Failed to record finding acknowledgments." });
+        }
+    }
+
+    /// <summary>
+    /// Applies batch review decisions to multiple submissions.
+    /// Note: ReviewerName is a self-reported display name for demo audit history.
+    /// </summary>
+    [HttpPost("batch")]
+    [EnableRateLimiting("ReviewDecisionPolicy")]
+    public async Task<ActionResult<BatchReviewResultDto>> SubmitBatchDecisions(
+        [FromBody] BatchReviewDecisionDto request,
+        CancellationToken cancellationToken)
+    {
+        if (request == null)
+        {
+            return BadRequest(new { error = "Batch review request body is required." });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.ReviewerName))
+        {
+            return BadRequest(new { error = "Reviewer name is required for governance auditability (self-reported for demo mode)." });
+        }
+
+        if (request.ContentSubmissionIds == null || request.ContentSubmissionIds.Count == 0)
+        {
+            return BadRequest(new { error = "At least one submission ID must be provided." });
+        }
+
+        try
+        {
+            var result = await _reviewService.SubmitBatchDecisionsAsync(request, cancellationToken);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing batch review decisions.");
+            return StatusCode(500, new { error = "Failed to process batch human review decisions." });
+        }
     }
 }

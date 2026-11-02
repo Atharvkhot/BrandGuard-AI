@@ -32,6 +32,7 @@ export class HumanReviewComponent implements OnInit {
   reviewerName = 'Judge Reviewer';
   selectedDecision: ReviewDecisionType = 'ChangesRequested';
   comments = '';
+  confirmHighRiskApproval = false;
 
   decisionOptions: { type: ReviewDecisionType; label: string; icon: string; cssClass: string; desc: string }[] = [
     {
@@ -103,6 +104,11 @@ export class HumanReviewComponent implements OnInit {
   submitDecision(): void {
     if (!this.reviewerName.trim()) {
       this.errorMessage.set('Reviewer name is required for governance auditability.');
+      return;
+    }
+
+    if (this.selectedDecision === 'Approved' && this.validationResult()?.overallRiskLevel === 'High' && !this.confirmHighRiskApproval) {
+      this.errorMessage.set('High-Risk Warning: Accidental approval prevented. This content has HIGH RISK findings. Please confirm the high-risk override checkbox below to proceed.');
       return;
     }
 

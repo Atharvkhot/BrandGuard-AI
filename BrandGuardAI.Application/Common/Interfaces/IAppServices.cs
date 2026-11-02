@@ -26,9 +26,12 @@ public interface IReviewService
     Task<ReviewDecisionDto> SubmitDecisionAsync(SubmitReviewDecisionDto dto, CancellationToken cancellationToken = default);
     Task<List<ReviewHistoryItemDto>> GetReviewHistoryAsync(CancellationToken cancellationToken = default);
     Task<ReviewDecisionDto?> GetDecisionBySubmissionIdAsync(Guid submissionId, CancellationToken cancellationToken = default);
+    Task<AcknowledgeFindingsResultDto> AcknowledgeFindingsAsync(AcknowledgeFindingsRequest request, CancellationToken cancellationToken = default);
+    Task<BatchReviewResultDto> SubmitBatchDecisionsAsync(BatchReviewDecisionDto request, CancellationToken cancellationToken = default);
 }
 
 public interface IDashboardService
 {
-    Task<DashboardStatsDto> GetDashboardStatsAsync(CancellationToken cancellationToken = default);
+    Task<DashboardStatsDto> GetDashboardStatsAsync(int? days = null, CancellationToken cancellationToken = default);
+    Task<GovernanceIntelligenceDto> GetGovernanceIntelligenceAsync(int? days = 30, CancellationToken cancellationToken = default);
 }

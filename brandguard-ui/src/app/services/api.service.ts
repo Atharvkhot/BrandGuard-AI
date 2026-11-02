@@ -11,7 +11,12 @@ import {
   SubmitReviewDecisionDto,
   ReviewDecisionDto,
   ReviewHistoryItemDto,
-  DashboardStatsDto
+  DashboardStatsDto,
+  AcknowledgeFindingsRequest,
+  AcknowledgeFindingsResultDto,
+  BatchReviewDecisionDto,
+  BatchReviewResultDto,
+  GovernanceIntelligenceDto
 } from '../models/brandguard.models';
 import { environment } from '../../environments/environment';
 
@@ -22,9 +27,14 @@ export class ApiService {
   private http = inject(HttpClient);
   private readonly baseUrl = environment.apiUrl;
 
-  // --- Dashboard ---
-  getDashboardStats(): Observable<DashboardStatsDto> {
-    return this.http.get<DashboardStatsDto>(`${this.baseUrl}/dashboard/stats`);
+  // --- Dashboard & Intelligence ---
+  getDashboardStats(days?: number): Observable<DashboardStatsDto> {
+    const params = days ? `?days=${days}` : '';
+    return this.http.get<DashboardStatsDto>(`${this.baseUrl}/dashboard/stats${params}`);
+  }
+
+  getGovernanceIntelligence(days: number = 30): Observable<GovernanceIntelligenceDto> {
+    return this.http.get<GovernanceIntelligenceDto>(`${this.baseUrl}/dashboard/intelligence?days=${days}`);
   }
 
   // --- Guidelines ---
@@ -85,6 +95,14 @@ export class ApiService {
 
   getDecisionBySubmissionId(submissionId: string): Observable<ReviewDecisionDto> {
     return this.http.get<ReviewDecisionDto>(`${this.baseUrl}/reviews/submission/${submissionId}`);
+  }
+
+  acknowledgeFindings(request: AcknowledgeFindingsRequest): Observable<AcknowledgeFindingsResultDto> {
+    return this.http.post<AcknowledgeFindingsResultDto>(`${this.baseUrl}/reviews/findings/acknowledge`, request);
+  }
+
+  submitBatchReview(dto: BatchReviewDecisionDto): Observable<BatchReviewResultDto> {
+    return this.http.post<BatchReviewResultDto>(`${this.baseUrl}/reviews/batch`, dto);
   }
 
   // --- Demo & Testing Utilities ---

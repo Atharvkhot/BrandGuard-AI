@@ -2,6 +2,7 @@ using BrandGuardAI.Application.Common.Interfaces;
 using BrandGuardAI.Application.Common.Models;
 using BrandGuardAI.Application.DTOs;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace BrandGuardAI.API.Controllers;
 
@@ -24,11 +25,12 @@ public class ContentController : ControllerBase
     }
 
     [HttpPost]
+    [EnableRateLimiting("ContentCreationPolicy")]
     public async Task<ActionResult<ContentSubmissionDto>> CreateSubmission(
         [FromBody] CreateContentSubmissionDto dto,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(dto.Title) || string.IsNullOrWhiteSpace(dto.ContentText))
+        if (dto == null || string.IsNullOrWhiteSpace(dto.Title) || string.IsNullOrWhiteSpace(dto.ContentText))
         {
             return BadRequest(new { error = "Title and marketing content text are required." });
         }
@@ -80,6 +82,7 @@ public class ContentController : ControllerBase
     }
 
     [HttpPost("{id:guid}/validate")]
+    [EnableRateLimiting("AiValidationPolicy")]
     public async Task<ActionResult<ValidationResultDto>> ValidateContent(Guid id, CancellationToken cancellationToken)
     {
         try
@@ -94,7 +97,7 @@ public class ContentController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error executing validation for submission {Id}", id);
-            return StatusCode(500, new { error = "Validation process encountered an internal error: " + ex.Message });
+            return StatusCode(500, new { error = "Validation process encountered an internal error. Please try again later." });
         }
     }
 

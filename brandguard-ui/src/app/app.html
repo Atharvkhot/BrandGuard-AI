@@ -1,6 +1,6 @@
 <div class="app-container">
-  <!-- 1. COMPACT WHITE ICON-ONLY SIDEBAR (~68px wide) -->
-  <aside class="app-sidebar">
+  <!-- 1. COMPACT WHITE ICON-ONLY SIDEBAR (Desktop >= 992px) -->
+  <aside class="app-sidebar d-none d-lg-flex" aria-label="Desktop Sidebar Navigation">
     <!-- Brand Shield Logo -->
     <a routerLink="/dashboard" class="sidebar-logo-link" title="BrandGuard AI Home">
       <div class="brand-shield-icon">
@@ -79,31 +79,140 @@
     </div>
   </aside>
 
-  <!-- 2. MAIN LAYOUT AREA -->
+  <!-- 2. MOBILE NAVIGATION DRAWER & BACKDROP (< 992px) -->
+  <div class="mobile-drawer-backdrop"
+       *ngIf="mobileMenuOpen()"
+       (click)="closeMobileMenu()"
+       aria-hidden="true"></div>
+
+  <aside class="mobile-drawer"
+         [class.drawer-open]="mobileMenuOpen()"
+         role="dialog"
+         aria-modal="true"
+         aria-label="Mobile Navigation Drawer">
+    <div class="drawer-header">
+      <div class="d-flex align-items-center gap-2">
+        <div class="brand-shield-icon">
+          <i class="bi bi-shield-check"></i>
+        </div>
+        <div class="drawer-brand-name">
+          <span class="fw-bold text-dark">BrandGuard</span>
+          <span class="brand-accent">AI</span>
+        </div>
+      </div>
+      <button type="button"
+              class="btn-close-drawer"
+              (click)="closeMobileMenu()"
+              aria-label="Close navigation menu">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+
+    <div class="drawer-body">
+      <nav class="drawer-nav">
+        <a routerLink="/dashboard"
+           routerLinkActive="active"
+           (click)="closeMobileMenu()"
+           class="drawer-nav-item"
+           id="mobile-nav-dashboard">
+          <i class="bi bi-grid-1x2"></i>
+          <span>Dashboard</span>
+        </a>
+        <a routerLink="/guidelines"
+           routerLinkActive="active"
+           (click)="closeMobileMenu()"
+           class="drawer-nav-item"
+           id="mobile-nav-guidelines">
+          <i class="bi bi-file-earmark-pdf"></i>
+          <span>Brand Guidelines</span>
+        </a>
+        <a routerLink="/submit"
+           routerLinkActive="active"
+           (click)="closeMobileMenu()"
+           class="drawer-nav-item"
+           id="mobile-nav-submit">
+          <i class="bi bi-pencil-square"></i>
+          <span>Submit Content</span>
+        </a>
+        <button type="button"
+                (click)="navigateToValidation(); closeMobileMenu()"
+                class="drawer-nav-item"
+                id="mobile-nav-validation">
+          <i class="bi bi-shield-check"></i>
+          <span>AI Validation</span>
+        </button>
+        <button type="button"
+                (click)="navigateToReview(); closeMobileMenu()"
+                class="drawer-nav-item"
+                id="mobile-nav-review">
+          <i class="bi bi-person-check"></i>
+          <span>Human Review</span>
+        </button>
+        <a routerLink="/history"
+           routerLinkActive="active"
+           (click)="closeMobileMenu()"
+           class="drawer-nav-item"
+           id="mobile-nav-history">
+          <i class="bi bi-clock-history"></i>
+          <span>Review History</span>
+        </a>
+      </nav>
+    </div>
+
+    <div class="drawer-footer">
+      <div class="d-flex align-items-center gap-2 p-2 rounded bg-light border w-100">
+        <div class="sidebar-avatar">TK</div>
+        <div class="small overflow-hidden">
+          <div class="fw-bold text-dark text-truncate">TechDuo</div>
+          <div class="text-muted text-truncate" style="font-size: 0.72rem;">Lead QA & Reviewer</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 3. MAIN LAYOUT AREA -->
   <div class="main-layout">
-    <!-- WHITE TOPBAR (~68px height) -->
+    <!-- TOPBAR -->
     <header class="app-topbar">
-      <!-- Left: Large Search Input -->
-      <div class="search-wrapper">
-        <i class="bi bi-search search-icon"></i>
-        <input type="text"
-               class="search-input"
-               placeholder="Search guidelines and content..."
-               [value]="searchQuery()"
-               (input)="onSearch($event)"
-               id="global-search-input">
+      <!-- Left: Mobile Hamburger & Brand for Mobile -->
+      <div class="topbar-left d-flex align-items-center gap-2">
+        <button type="button"
+                class="btn-mobile-nav d-lg-none"
+                (click)="toggleMobileMenu()"
+                aria-label="Toggle navigation drawer"
+                id="btn-mobile-menu-toggle">
+          <i class="bi" [ngClass]="mobileMenuOpen() ? 'bi-x-lg' : 'bi-list'"></i>
+        </button>
+
+        <a routerLink="/dashboard" class="mobile-brand-link d-flex d-lg-none align-items-center gap-1 text-decoration-none">
+          <div class="brand-shield-icon-sm">
+            <i class="bi bi-shield-check"></i>
+          </div>
+          <span class="fw-bold text-dark fs-6">BrandGuard<span class="brand-accent">AI</span></span>
+        </a>
+
+        <!-- Large Search Input (desktop / tablet) -->
+        <div class="search-wrapper d-none d-sm-block">
+          <i class="bi bi-search search-icon"></i>
+          <input type="text"
+                 class="search-input"
+                 placeholder="Search guidelines and content..."
+                 [value]="searchQuery()"
+                 (input)="onSearch($event)"
+                 id="global-search-input">
+        </div>
       </div>
 
-      <!-- Right: Status Indicator & Brand Identity -->
+      <!-- Right: Status Indicator, Brand Tagline & Action Button -->
       <div class="topbar-actions">
         <!-- Live System Operational Status -->
-        <div class="status-indicator" title="ASP.NET Core .NET 9 API Active">
+        <div class="status-indicator d-none d-md-flex" title="ASP.NET Core .NET 9 API Active">
           <span class="pulse-dot"></span>
           <span>All Systems Operational</span>
         </div>
 
-        <!-- Product Name & Brand Tagline -->
-        <div class="brand-title-badge d-none d-md-flex">
+        <!-- Product Name & Brand Tagline (Desktop) -->
+        <div class="brand-title-badge d-none d-xl-flex">
           <span>BrandGuard</span>
           <span class="brand-accent">AI</span>
         </div>
@@ -111,10 +220,24 @@
         <!-- Quick Primary Action Button -->
         <a routerLink="/submit" class="btn-orange-primary shadow-sm" id="topbar-compare-content-btn">
           <i class="bi bi-file-earmark-plus"></i>
-          <span>Compare Content</span>
+          <span class="d-none d-sm-inline">Compare Content</span>
+          <span class="d-inline d-sm-none">Compare</span>
         </a>
       </div>
     </header>
+
+    <!-- Mobile Search Bar (< 576px) -->
+    <div class="mobile-search-bar d-block d-sm-none p-2 bg-white border-bottom">
+      <div class="search-wrapper w-100">
+        <i class="bi bi-search search-icon"></i>
+        <input type="text"
+               class="search-input w-100"
+               placeholder="Search guidelines and content..."
+               [value]="searchQuery()"
+               (input)="onSearch($event)"
+               id="global-search-input-mobile">
+      </div>
+    </div>
 
     <!-- ROUTED VIEW CONTENT -->
     <main class="app-content-body">

@@ -16,9 +16,18 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("stats")]
-    public async Task<ActionResult<DashboardStatsDto>> GetStats(CancellationToken cancellationToken)
+    public async Task<ActionResult<DashboardStatsDto>> GetStats([FromQuery] int? days, CancellationToken cancellationToken)
     {
-        var stats = await _dashboardService.GetDashboardStatsAsync(cancellationToken);
+        var sanitizedDays = days.HasValue ? Math.Clamp(days.Value, 1, 365) : (int?)null;
+        var stats = await _dashboardService.GetDashboardStatsAsync(sanitizedDays, cancellationToken);
         return Ok(stats);
+    }
+
+    [HttpGet("intelligence")]
+    public async Task<ActionResult<GovernanceIntelligenceDto>> GetIntelligence([FromQuery] int? days = 30, CancellationToken cancellationToken = default)
+    {
+        int effectiveDays = days.HasValue && days.Value > 0 ? Math.Min(days.Value, 365) : 30;
+        var intelligence = await _dashboardService.GetGovernanceIntelligenceAsync(effectiveDays, cancellationToken);
+        return Ok(intelligence);
     }
 }

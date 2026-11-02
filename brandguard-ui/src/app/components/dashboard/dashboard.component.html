@@ -206,6 +206,19 @@
             Review
           </span>
         </button>
+
+        <!-- 8. Continuous Governance Intelligence -->
+        <button type="button"
+                class="analysis-nav-btn"
+                [class.active]="activeTab() === 'intelligence'"
+                (click)="setTab('intelligence')"
+                id="tab-btn-intelligence">
+          <i class="bi bi-graph-up-arrow"></i>
+          <span>Governance Intelligence</span>
+          <span class="tab-badge ms-auto bg-primary-subtle text-primary border border-primary-subtle">
+            Telemetry
+          </span>
+        </button>
       </aside>
 
       <!-- RIGHT COLUMN: Analysis Workspace Content Area -->
@@ -222,10 +235,16 @@
                 <span *ngSwitchCase="'compliance'">Compliance & Policy Determinations</span>
                 <span *ngSwitchCase="'corrections'">Suggested Corrections & Fixes</span>
                 <span *ngSwitchCase="'review'">Human Governance Review</span>
+                <span *ngSwitchCase="'intelligence'">Continuous Governance Intelligence</span>
               </ng-container>
             </h3>
             <p class="text-muted small mb-0 mt-1">
-              "AI Detects. Evidence Explains. Humans Decide."
+              <ng-container *ngIf="activeTab() === 'intelligence'">
+                Real-time compliance analytics, violation velocity, and BrandGuard AI health indicators.
+              </ng-container>
+              <ng-container *ngIf="activeTab() !== 'intelligence'">
+                "AI Detects. Evidence Explains. Humans Decide."
+              </ng-container>
             </p>
           </div>
 
@@ -737,6 +756,573 @@
                 <span>{{ submittingReview() ? 'Saving Decision...' : 'Save Decision' }}</span>
               </button>
             </div>
+          </div>
+        </div>
+
+        <!-- TAB 8: CONTINUOUS GOVERNANCE INTELLIGENCE -->
+        <div *ngIf="activeTab() === 'intelligence'" class="intelligence-workspace">
+
+          <!-- Time Range Filter & Telemetry Controls Bar -->
+          <div class="intelligence-filter-bar mb-4 p-3 bg-white rounded-3 border d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <span class="small text-muted fw-bold text-uppercase d-flex align-items-center gap-1">
+                <i class="bi bi-funnel-fill text-primary"></i> Time Window:
+              </span>
+              <div class="btn-group btn-group-sm" role="group">
+                <button type="button"
+                        class="btn"
+                        [ngClass]="selectedDays() === 7 ? 'btn-primary fw-bold' : 'btn-outline-secondary'"
+                        (click)="changeDaysFilter(7)"
+                        id="filter-days-7">
+                  Last 7 Days
+                </button>
+                <button type="button"
+                        class="btn"
+                        [ngClass]="selectedDays() === 30 ? 'btn-primary fw-bold' : 'btn-outline-secondary'"
+                        (click)="changeDaysFilter(30)"
+                        id="filter-days-30">
+                  Last 30 Days
+                </button>
+                <button type="button"
+                        class="btn"
+                        [ngClass]="selectedDays() === 90 ? 'btn-primary fw-bold' : 'btn-outline-secondary'"
+                        (click)="changeDaysFilter(90)"
+                        id="filter-days-90">
+                  Last 90 Days
+                </button>
+              </div>
+
+              <span class="badge bg-light text-secondary border ms-2 small d-none d-md-inline">
+                UTC Synchronized
+              </span>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+              <button type="button"
+                      class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+                      (click)="refreshIntelligence()"
+                      [disabled]="loadingIntelligence()"
+                      id="btn-refresh-intelligence">
+                <i class="bi" [ngClass]="loadingIntelligence() ? 'bi-arrow-clockwise spin' : 'bi-arrow-repeat'"></i>
+                <span>{{ loadingIntelligence() ? 'Updating...' : 'Refresh' }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Informational Scope Banner -->
+          <div class="alert alert-info py-2 px-3 small d-flex align-items-center justify-content-between mb-4 border-info-subtle">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-info-circle-fill text-info fs-6"></i>
+              <span>
+                Metrics and trends reflect data created in the <strong>Last {{ selectedDays() }} Days</strong>.
+                <strong>Active Guidelines ({{ intelligence()?.overview?.totalGuidelines || 0 }})</strong> is a lifetime system count.
+              </span>
+            </div>
+            <span class="text-muted small">Generated {{ intelligence()?.generatedAt | date:'mediumTime' }}</span>
+          </div>
+
+          <!-- Error Alert if API Fails -->
+          <div *ngIf="intelligenceError()" class="alert alert-danger py-2 px-3 small d-flex align-items-center justify-content-between mb-4">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-exclamation-triangle-fill text-danger"></i>
+              <span>{{ intelligenceError() }}</span>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-danger" (click)="refreshIntelligence()">Retry</button>
+          </div>
+
+          <!-- Loading State Overlay -->
+          <div *ngIf="loadingIntelligence()" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <div class="text-muted small mt-2">Computing real-time governance metrics and health score...</div>
+          </div>
+
+          <!-- Main Content (When not loading) -->
+          <div *ngIf="!loadingIntelligence() && intelligence()">
+
+            <!-- A. 5 KPI CARDS ROW -->
+            <div class="row g-3 mb-4">
+              <!-- KPI 1: Total Submissions -->
+              <div class="col-12 col-sm-6 col-xl">
+                <div class="kpi-card p-3 bg-white rounded-3 border h-100 position-relative">
+                  <div class="d-flex align-items-center justify-content-between mb-1">
+                    <span class="text-muted small fw-semibold text-uppercase">Total Submissions</span>
+                    <span class="kpi-icon-box bg-blue-subtle text-primary">
+                      <i class="bi bi-file-earmark-text"></i>
+                    </span>
+                  </div>
+                  <div class="fs-2 fw-bold text-dark mt-1">
+                    {{ intelligence()?.overview?.totalSubmissions || 0 }}
+                  </div>
+                  <div class="small text-muted mt-1">
+                    <span class="fw-semibold text-primary">{{ intelligence()?.overview?.totalValidationRuns || 0 }}</span> validations run
+                  </div>
+                </div>
+              </div>
+
+              <!-- KPI 2: Approval Rate -->
+              <div class="col-12 col-sm-6 col-xl">
+                <div class="kpi-card p-3 bg-white rounded-3 border h-100 position-relative">
+                  <div class="d-flex align-items-center justify-content-between mb-1">
+                    <span class="text-muted small fw-semibold text-uppercase">Approval Rate</span>
+                    <span class="kpi-icon-box bg-success-subtle text-success">
+                      <i class="bi bi-check2-circle"></i>
+                    </span>
+                  </div>
+                  <div class="fs-2 fw-bold text-success mt-1">
+                    {{ (intelligence()?.approvalAnalytics?.approvalRate || 0) | number:'1.1-1' }}%
+                  </div>
+                  <div class="small text-muted mt-1">
+                    <span class="fw-semibold text-dark">{{ intelligence()?.approvalAnalytics?.approvedCount || 0 }}</span> of
+                    {{ intelligence()?.approvalAnalytics?.totalReviewedSubmissions || 0 }} reviewed drafts
+                  </div>
+                </div>
+              </div>
+
+              <!-- KPI 3: High-Risk Findings -->
+              <div class="col-12 col-sm-6 col-xl">
+                <div class="kpi-card p-3 bg-white rounded-3 border h-100 position-relative">
+                  <div class="d-flex align-items-center justify-content-between mb-1">
+                    <span class="text-muted small fw-semibold text-uppercase">High-Risk Findings</span>
+                    <span class="kpi-icon-box bg-danger-subtle text-danger">
+                      <i class="bi bi-shield-x"></i>
+                    </span>
+                  </div>
+                  <div class="fs-2 fw-bold text-danger mt-1">
+                    {{ intelligence()?.overview?.highRiskFindings || 0 }}
+                  </div>
+                  <div class="small text-muted mt-1">
+                    Med: <span class="fw-semibold text-warning">{{ intelligence()?.overview?.mediumRiskFindings || 0 }}</span> &bull;
+                    Low: <span class="fw-semibold text-success">{{ intelligence()?.overview?.lowRiskFindings || 0 }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- KPI 4: Pending Reviews -->
+              <div class="col-12 col-sm-6 col-xl">
+                <div class="kpi-card p-3 bg-white rounded-3 border h-100 position-relative">
+                  <div class="d-flex align-items-center justify-content-between mb-1">
+                    <span class="text-muted small fw-semibold text-uppercase">Pending Reviews</span>
+                    <span class="kpi-icon-box bg-warning-subtle text-warning">
+                      <i class="bi bi-hourglass-split"></i>
+                    </span>
+                  </div>
+                  <div class="fs-2 fw-bold text-warning mt-1">
+                    {{ intelligence()?.overview?.pendingReviews || 0 }}
+                  </div>
+                  <div class="small text-muted mt-1">
+                    Drafts awaiting human review
+                  </div>
+                </div>
+              </div>
+
+              <!-- KPI 5: Governance Health Score -->
+              <div class="col-12 col-sm-6 col-xl">
+                <div class="kpi-card p-3 bg-white rounded-3 border h-100 position-relative border-primary-subtle"
+                     style="background: linear-gradient(135deg, #ffffff 0%, #f0f7ff 100%);">
+                  <div class="d-flex align-items-center justify-content-between mb-1">
+                    <span class="text-primary small fw-bold text-uppercase d-flex align-items-center gap-1">
+                      <i class="bi bi-speedometer2"></i> Governance Health
+                    </span>
+                    <button type="button"
+                            class="btn btn-xs btn-outline-primary py-0 px-2 rounded-pill small"
+                            style="font-size: 0.72rem;"
+                            (click)="toggleScoreExplainer()"
+                            title="View Score Formula Breakdown">
+                      Formula <i class="bi bi-info-circle"></i>
+                    </button>
+                  </div>
+                  <div class="d-flex align-items-baseline gap-2 mt-1">
+                    <ng-container *ngIf="intelligence()?.healthScore?.score !== null && intelligence()?.healthScore?.score !== undefined; else noScoreData">
+                      <span class="fs-2 fw-bold text-primary">
+                        {{ intelligence()?.healthScore?.score | number:'1.0-0' }}
+                      </span>
+                      <span class="text-muted small">/ 100</span>
+                    </ng-container>
+                    <ng-template #noScoreData>
+                      <span class="fs-4 fw-bold text-muted">
+                        Not enough data
+                      </span>
+                    </ng-template>
+
+                    <span class="badge ms-auto"
+                          [ngClass]="{
+                            'bg-secondary-subtle text-secondary border': intelligence()?.healthScore?.score === null || intelligence()?.healthScore?.score === undefined,
+                            'bg-success-subtle text-success border border-success-subtle': intelligence()?.healthScore?.score !== null && intelligence()?.healthScore?.score !== undefined && intelligence()!.healthScore.score! >= 80,
+                            'bg-warning-subtle text-warning border border-warning-subtle': intelligence()?.healthScore?.score !== null && intelligence()?.healthScore?.score !== undefined && intelligence()!.healthScore.score! >= 50 && intelligence()!.healthScore.score! < 80,
+                            'bg-danger-subtle text-danger border border-danger-subtle': intelligence()?.healthScore?.score !== null && intelligence()?.healthScore?.score !== undefined && intelligence()!.healthScore.score! < 50
+                          }">
+                      {{ intelligence()?.healthScore?.statusLabel }}
+                    </span>
+                  </div>
+                  <div class="small text-muted mt-1" style="font-size: 0.72rem;">
+                    Internal BrandGuard AI Health Indicator
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- COLLAPSIBLE SCORE FORMULA EXPLAINER -->
+            <div *ngIf="showScoreExplainer()" class="p-3 mb-4 bg-white rounded-3 border shadow-sm score-explainer-box">
+              <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                <h6 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                  <i class="bi bi-calculator text-primary"></i> Explainable Governance Health Score Formula
+                </h6>
+                <button type="button" class="btn-close" (click)="toggleScoreExplainer()"></button>
+              </div>
+
+              <p class="text-muted small mb-3">
+                {{ intelligence()?.healthScore?.formulaExplanation }}
+              </p>
+
+              <div class="row g-2 text-center small">
+                <div class="col-6 col-md-3">
+                  <div class="p-2 bg-light rounded border">
+                    <div class="text-muted">Base Starting Score</div>
+                    <div class="fw-bold text-dark fs-6">{{ intelligence()?.healthScore?.baseScore }} pts</div>
+                  </div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="p-2 bg-danger-subtle rounded border border-danger-subtle">
+                    <div class="text-danger">Weighted Finding Penalty</div>
+                    <div class="fw-bold text-danger fs-6">-{{ intelligence()?.healthScore?.findingPenalty }} pts</div>
+                  </div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="p-2 bg-info-subtle rounded border border-info-subtle">
+                    <div class="text-primary">Decision Adjustment</div>
+                    <div class="fw-bold text-primary fs-6">
+                      {{ (intelligence()?.healthScore?.decisionAdjustment || 0) >= 0 ? '+' : '' }}{{ intelligence()?.healthScore?.decisionAdjustment }} pts
+                    </div>
+                  </div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="p-2 bg-success-subtle rounded border border-success-subtle">
+                    <div class="text-success">Acknowledgment Bonus</div>
+                    <div class="fw-bold text-success fs-6">+{{ intelligence()?.healthScore?.acknowledgmentBonus }} pts</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-2 text-muted small text-end fst-italic" style="font-size: 0.72rem;">
+                * Range: 0 to 100. Internal heuristic metric based on active validation and human review records. Not an external industry benchmark.
+              </div>
+            </div>
+
+            <!-- B. VIOLATION TRENDS CHART -->
+            <div class="p-3 bg-white rounded-3 border mb-4 shadow-sm">
+              <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 pb-2 border-bottom">
+                <div>
+                  <h6 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                    <i class="bi bi-graph-up text-primary"></i> Daily Violation Trends
+                  </h6>
+                  <p class="text-muted small mb-0 mt-1">
+                    Continuous historical findings over the last {{ selectedDays() }} days (including zero-activity periods)
+                  </p>
+                </div>
+
+                <!-- Chart Legend -->
+                <div class="d-flex align-items-center gap-3 small flex-wrap">
+                  <span class="d-flex align-items-center gap-1">
+                    <span class="legend-dot bg-danger"></span> High Risk
+                  </span>
+                  <span class="d-flex align-items-center gap-1">
+                    <span class="legend-dot bg-warning"></span> Medium Risk
+                  </span>
+                  <span class="d-flex align-items-center gap-1">
+                    <span class="legend-dot bg-success"></span> Low Risk
+                  </span>
+                  <span class="badge bg-light text-dark border">
+                    Total Findings: {{ intelligence()?.overview?.totalFindings || 0 }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Hover Day Info Pill -->
+              <div *ngIf="hoveredTrendDay()" class="alert alert-light py-1 px-3 small border mb-2 d-flex align-items-center justify-content-between">
+                <span>
+                  <strong>Date:</strong> {{ hoveredTrendDay()?.date }}
+                </span>
+                <span class="d-flex gap-3">
+                  <span class="text-danger fw-semibold">High: {{ hoveredTrendDay()?.highRiskCount }}</span>
+                  <span class="text-warning fw-semibold">Med: {{ hoveredTrendDay()?.mediumRiskCount }}</span>
+                  <span class="text-success fw-semibold">Low: {{ hoveredTrendDay()?.lowRiskCount }}</span>
+                  <span class="fw-bold text-dark">Total: {{ hoveredTrendDay()?.totalFindings }}</span>
+                </span>
+              </div>
+
+              <!-- Responsive Bar Visualizer -->
+              <div class="trend-chart-container py-3">
+                <div class="trend-bars-wrapper d-flex align-items-end justify-content-between gap-1" style="height: 180px;">
+                  <div *ngFor="let day of intelligence()?.violationTrends"
+                       class="trend-day-col d-flex flex-column align-items-center h-100 justify-content-end flex-grow-1"
+                       (mouseenter)="setHoveredTrendDay(day)"
+                       (mouseleave)="setHoveredTrendDay(null)"
+                       [title]="day.date + ': Total ' + day.totalFindings + ' (High: ' + day.highRiskCount + ', Med: ' + day.mediumRiskCount + ', Low: ' + day.lowRiskCount + ')'">
+
+                    <!-- Stacked Bar Column -->
+                    <div class="bar-stack d-flex flex-column-reverse w-100 rounded-top"
+                         [style.height.%]="getBarHeightPercent(day.totalFindings, getMaxDailyFindings())"
+                         style="min-height: 4px; background-color: #f1f5f9; transition: height 0.3s ease;">
+                      <!-- High Risk Segment -->
+                      <div *ngIf="day.highRiskCount > 0"
+                           class="bg-danger"
+                           [style.height.%]="day.totalFindings > 0 ? (day.highRiskCount / day.totalFindings) * 100 : 0"></div>
+                      <!-- Medium Risk Segment -->
+                      <div *ngIf="day.mediumRiskCount > 0"
+                           class="bg-warning"
+                           [style.height.%]="day.totalFindings > 0 ? (day.mediumRiskCount / day.totalFindings) * 100 : 0"></div>
+                      <!-- Low Risk Segment -->
+                      <div *ngIf="day.lowRiskCount > 0"
+                           class="bg-success"
+                           [style.height.%]="day.totalFindings > 0 ? (day.lowRiskCount / day.totalFindings) * 100 : 0"></div>
+                    </div>
+
+                    <!-- Subtle Baseline dot for 0 count days -->
+                    <div *ngIf="day.totalFindings === 0" class="zero-baseline-dot mt-1"></div>
+                  </div>
+                </div>
+
+                <!-- Date Axis Labels (Subsampled for readability) -->
+                <div class="d-flex justify-content-between mt-2 pt-1 border-top text-muted small" style="font-size: 0.72rem;">
+                  <ng-container *ngIf="intelligence()?.violationTrends?.length">
+                    <span>{{ intelligence()?.violationTrends?.[0]?.date }}</span>
+                    <span *ngIf="intelligence()!.violationTrends.length > 15">
+                      {{ intelligence()?.violationTrends?.[Math.floor(intelligence()!.violationTrends.length / 2)]?.date }}
+                    </span>
+                    <span>{{ intelligence()?.violationTrends?.[intelligence()!.violationTrends.length - 1]?.date }}</span>
+                  </ng-container>
+                </div>
+              </div>
+            </div>
+
+            <!-- TWO COLUMNS: TOP VIOLATED GUIDELINES & REVIEW DECISION BREAKDOWN -->
+            <div class="row g-4 mb-4">
+
+              <!-- C. TOP 5 VIOLATED GUIDELINES / RULES -->
+              <div class="col-lg-7">
+                <div class="p-3 bg-white rounded-3 border h-100 shadow-sm">
+                  <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                    <div>
+                      <h6 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                        <i class="bi bi-list-stars text-primary"></i> Frequently Violated Policies
+                      </h6>
+                      <p class="text-muted small mb-0 mt-1">
+                        Top 5 violated guidelines and deterministic rules
+                      </p>
+                    </div>
+                    <span class="badge bg-light text-secondary border small">Top 5</span>
+                  </div>
+
+                  <!-- Empty State if Zero Violations -->
+                  <div *ngIf="!intelligence()?.topViolatedGuidelines?.length" class="text-center py-5 text-muted">
+                    <i class="bi bi-check-circle-fill text-success fs-2 opacity-50"></i>
+                    <div class="fw-bold mt-2">Zero Policy Violations Detected</div>
+                    <div class="small">No guideline or deterministic rule infractions during this period.</div>
+                  </div>
+
+                  <!-- Top Guidelines List -->
+                  <div *ngIf="intelligence()?.topViolatedGuidelines?.length" class="d-flex flex-column gap-3">
+                    <div *ngFor="let g of intelligence()?.topViolatedGuidelines; let idx = index"
+                         class="p-2 rounded-2 border-bottom">
+                      <div class="d-flex align-items-center justify-content-between mb-1">
+                        <div class="d-flex align-items-center gap-2 flex-grow-1 me-2 text-truncate">
+                          <span class="badge bg-light text-dark border fw-bold" style="min-width: 24px;">#{{ idx + 1 }}</span>
+                          <span class="fw-semibold text-dark text-truncate" [title]="g.guidelineOrRuleName">
+                            {{ g.guidelineOrRuleName }}
+                          </span>
+                        </div>
+
+                        <!-- Source Badge -->
+                        <span *ngIf="g.isVerifiedGuideline" class="badge bg-primary-subtle text-primary border border-primary-subtle small text-nowrap">
+                          <i class="bi bi-patch-check-fill me-1"></i> Verified Guideline
+                        </span>
+                        <span *ngIf="g.isDeterministicRule" class="badge bg-purple-subtle text-purple border border-purple-subtle small text-nowrap" style="background-color: #f3e8ff; color: #7e22ce;">
+                          <i class="bi bi-cpu-fill me-1"></i> Deterministic Rule
+                        </span>
+                        <span *ngIf="!g.isVerifiedGuideline && !g.isDeterministicRule" class="badge bg-secondary-subtle text-secondary border small text-nowrap">
+                          <i class="bi bi-robot me-1"></i> AI Heuristic Finding
+                        </span>
+                      </div>
+
+                      <!-- Progress Meter & Numbers -->
+                      <div class="d-flex align-items-center gap-3 mt-2">
+                        <div class="progress flex-grow-1" style="height: 6px;">
+                          <div class="progress-bar bg-primary"
+                               role="progressbar"
+                               [style.width.%]="g.percentageOfTotal"
+                               [attr.aria-valuenow]="g.percentageOfTotal"
+                               aria-valuemin="0"
+                               aria-valuemax="100"></div>
+                        </div>
+                        <div class="small text-muted d-flex align-items-center gap-2 text-nowrap">
+                          <span class="fw-bold text-dark">{{ g.violationCount }} violations</span>
+                          <span>({{ g.percentageOfTotal | number:'1.1-1' }}%)</span>
+                        </div>
+                      </div>
+
+                      <!-- Risk Distribution Chips -->
+                      <div class="d-flex align-items-center gap-2 mt-2" style="font-size: 0.72rem;">
+                        <span class="text-muted">Risk distribution:</span>
+                        <span *ngIf="g.highRiskCount > 0" class="badge bg-danger-subtle text-danger border border-danger-subtle py-0 px-1">
+                          {{ g.highRiskCount }} High
+                        </span>
+                        <span *ngIf="g.mediumRiskCount > 0" class="badge bg-warning-subtle text-warning border border-warning-subtle py-0 px-1">
+                          {{ g.mediumRiskCount }} Med
+                        </span>
+                        <span *ngIf="g.lowRiskCount > 0" class="badge bg-success-subtle text-success border border-success-subtle py-0 px-1">
+                          {{ g.lowRiskCount }} Low
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- D. REVIEW DECISION BREAKDOWN -->
+              <div class="col-lg-5">
+                <div class="p-3 bg-white rounded-3 border h-100 shadow-sm">
+                  <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                    <div>
+                      <h6 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                        <i class="bi bi-pie-chart text-primary"></i> Review Decision Breakdown
+                      </h6>
+                      <p class="text-muted small mb-0 mt-1">
+                        Human oversight actions on unique submissions
+                      </p>
+                    </div>
+                    <span class="badge bg-light text-secondary border small">
+                      {{ intelligence()?.approvalAnalytics?.totalReviewedSubmissions || 0 }} Drafts
+                    </span>
+                  </div>
+
+                  <!-- Decision Progress Meters -->
+                  <div class="d-flex flex-column gap-3">
+                    <!-- Approved -->
+                    <div class="p-2 rounded bg-light border">
+                      <div class="d-flex justify-content-between small mb-1">
+                        <span class="fw-bold text-success d-flex align-items-center gap-1">
+                          <i class="bi bi-check-circle-fill"></i> Approved
+                        </span>
+                        <span class="fw-bold text-dark">
+                          {{ intelligence()?.approvalAnalytics?.approvedCount || 0 }}
+                          ({{ (intelligence()?.approvalAnalytics?.approvalRate || 0) | number:'1.1-1' }}%)
+                        </span>
+                      </div>
+                      <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-success"
+                             [style.width.%]="intelligence()?.approvalAnalytics?.approvalRate || 0"></div>
+                      </div>
+                    </div>
+
+                    <!-- Changes Requested -->
+                    <div class="p-2 rounded bg-light border">
+                      <div class="d-flex justify-content-between small mb-1">
+                        <span class="fw-bold text-warning d-flex align-items-center gap-1">
+                          <i class="bi bi-pencil-square"></i> Changes Requested
+                        </span>
+                        <span class="fw-bold text-dark">
+                          {{ intelligence()?.approvalAnalytics?.changesRequestedCount || 0 }}
+                          ({{ (intelligence()?.approvalAnalytics?.changesRequestedRate || 0) | number:'1.1-1' }}%)
+                        </span>
+                      </div>
+                      <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-warning"
+                             [style.width.%]="intelligence()?.approvalAnalytics?.changesRequestedRate || 0"></div>
+                      </div>
+                    </div>
+
+                    <!-- Rejected -->
+                    <div class="p-2 rounded bg-light border">
+                      <div class="d-flex justify-content-between small mb-1">
+                        <span class="fw-bold text-danger d-flex align-items-center gap-1">
+                          <i class="bi bi-x-circle-fill"></i> Rejected
+                        </span>
+                        <span class="fw-bold text-dark">
+                          {{ intelligence()?.approvalAnalytics?.rejectedCount || 0 }}
+                          ({{ (intelligence()?.approvalAnalytics?.rejectionRate || 0) | number:'1.1-1' }}%)
+                        </span>
+                      </div>
+                      <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-danger"
+                             [style.width.%]="intelligence()?.approvalAnalytics?.rejectionRate || 0"></div>
+                      </div>
+                    </div>
+
+                    <!-- Pending Reviews -->
+                    <div class="p-2 rounded bg-light border">
+                      <div class="d-flex justify-content-between small mb-1">
+                        <span class="fw-bold text-secondary d-flex align-items-center gap-1">
+                          <i class="bi bi-hourglass"></i> Pending Review
+                        </span>
+                        <span class="fw-bold text-dark">
+                          {{ intelligence()?.overview?.pendingReviews || 0 }} submissions
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Denominator Accuracy Guarantee Box -->
+                  <div class="mt-3 p-2 rounded bg-light-subtle border small text-muted" style="font-size: 0.72rem;">
+                    <i class="bi bi-shield-check text-primary me-1"></i>
+                    <strong>Accurate Denominator:</strong> Percentages are calculated across unique reviewed submissions ({{ intelligence()?.approvalAnalytics?.totalReviewedSubmissions || 0 }} drafts) across {{ intelligence()?.approvalAnalytics?.totalReviewEvents || 0 }} total review events to avoid duplicate count distortion.
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- E. RECENT GOVERNANCE ACTIVITY STREAM -->
+            <div class="p-3 bg-white rounded-3 border shadow-sm mb-4">
+              <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                <div>
+                  <h6 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                    <i class="bi bi-clock-history text-primary"></i> Recent Governance Activity
+                  </h6>
+                  <p class="text-muted small mb-0 mt-1">
+                    Audit trail of recent AI validations and human review decisions
+                  </p>
+                </div>
+                <span class="badge bg-light text-secondary border small">Live Stream</span>
+              </div>
+
+              <!-- Empty State if No Activity -->
+              <div *ngIf="!intelligence()?.recentActivities?.length" class="text-center py-4 text-muted small">
+                <i class="bi bi-inbox fs-3 opacity-50"></i>
+                <div class="mt-1">No governance activity recorded in this time range.</div>
+              </div>
+
+              <!-- Activity List -->
+              <div *ngIf="intelligence()?.recentActivities?.length" class="d-flex flex-column gap-2">
+                <div *ngFor="let act of intelligence()?.recentActivities"
+                     class="d-flex align-items-start justify-content-between p-2 rounded bg-light border-bottom">
+                  <div class="d-flex align-items-start gap-2">
+                    <span class="badge mt-1"
+                          [ngClass]="act.activityType === 'HumanReview' ? 'bg-primary-subtle text-primary border border-primary-subtle' : 'bg-secondary-subtle text-secondary border'">
+                      <i class="bi" [ngClass]="act.activityType === 'HumanReview' ? 'bi-person-badge' : 'bi-cpu'"></i>
+                      {{ act.activityType === 'HumanReview' ? 'Human Review' : 'AI Run' }}
+                    </span>
+                    <div>
+                      <div class="fw-semibold text-dark small">{{ act.title }}</div>
+                      <div class="text-muted small">{{ act.details }}</div>
+                      <div class="text-muted small mt-1" style="font-size: 0.72rem;">
+                        <i class="bi bi-person"></i> {{ act.reviewerOrActor || 'System' }} &bull; {{ act.timestamp | date:'medium' }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <span *ngIf="act.severity"
+                        class="badge"
+                        [ngClass]="{
+                          'bg-danger-subtle text-danger border border-danger-subtle': act.severity === 'High',
+                          'bg-warning-subtle text-warning border border-warning-subtle': act.severity === 'Medium',
+                          'bg-success-subtle text-success border border-success-subtle': act.severity === 'Low' || act.severity === 'Approved'
+                        }">
+                    {{ act.severity }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 

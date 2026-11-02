@@ -1,7 +1,8 @@
-import { Component, signal, inject, OnInit } from '@angular/core';
+import { Component, signal, inject, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
+import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { filter } from 'rxjs/operators';
 import { ApiService } from './services/api.service';
 
 @Component({
@@ -23,6 +24,13 @@ export class App implements OnInit {
 
   ngOnInit(): void {
     this.refreshLatestSubmission();
+
+    // Close mobile drawer on route change
+    this.router.events
+      .pipe(filter(event => event instanceof NavigationEnd))
+      .subscribe(() => {
+        this.closeMobileMenu();
+      });
   }
 
   refreshLatestSubmission(): void {
@@ -55,7 +63,27 @@ export class App implements OnInit {
   }
 
   toggleMobileMenu(): void {
-    this.mobileMenuOpen.update(v => !v);
+    this.mobileMenuOpen.update(v => {
+      const next = !v;
+      if (next) {
+        document.body.classList.add('mobile-drawer-open');
+      } else {
+        document.body.classList.remove('mobile-drawer-open');
+      }
+      return next;
+    });
+  }
+
+  closeMobileMenu(): void {
+    if (this.mobileMenuOpen()) {
+      this.mobileMenuOpen.set(false);
+      document.body.classList.remove('mobile-drawer-open');
+    }
+  }
+
+  @HostListener('window:keydown.escape')
+  onEscapePress(): void {
+    this.closeMobileMenu();
   }
 
   onSearch(event: Event): void {
@@ -63,3 +91,4 @@ export class App implements OnInit {
     this.searchQuery.set(input);
   }
 }
+

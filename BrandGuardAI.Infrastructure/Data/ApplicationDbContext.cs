@@ -102,6 +102,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             entity.Property(e => e.OriginalText).IsRequired();
             entity.Property(e => e.Explanation).IsRequired();
             entity.Property(e => e.SuggestedFix).IsRequired();
+            entity.Property(e => e.IsAcknowledged).HasDefaultValue(false);
+            entity.Property(e => e.AcknowledgedBy).HasMaxLength(150);
             entity.HasIndex(e => e.ValidationRunId);
             entity.HasIndex(e => e.GuidelineChunkId);
             entity.HasOne(e => e.GuidelineChunk)

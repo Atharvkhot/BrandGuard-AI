@@ -266,12 +266,11 @@ public class LlmValidationService : ILlmValidationService
                         }
                     }
 
-                    // If citation was null but a retrieved chunk matches the context, link it
-                    if (citedChunkId == null && retrievedChunks.Count > 0)
+                    // If citation was null but a retrieved chunk matches the affected text, link it
+                    if (citedChunkId == null && retrievedChunks.Count > 0 && !string.IsNullOrWhiteSpace(affected) && affected.Length >= 4)
                     {
                         var matchingChunk = retrievedChunks.FirstOrDefault(c =>
-                            c.ChunkText.Contains(category, StringComparison.OrdinalIgnoreCase) ||
-                            (!string.IsNullOrEmpty(affected) && c.ChunkText.Contains(affected, StringComparison.OrdinalIgnoreCase)));
+                            c.ChunkText.Contains(affected, StringComparison.OrdinalIgnoreCase));
 
                         if (matchingChunk != null)
                         {
@@ -320,7 +319,7 @@ public class LlmValidationService : ILlmValidationService
             var evidenceChunk = request.RetrievedChunks.FirstOrDefault(c =>
                 c.ChunkText.Contains("guarantee", StringComparison.OrdinalIgnoreCase) ||
                 c.ChunkText.Contains("promise", StringComparison.OrdinalIgnoreCase) ||
-                c.ChunkText.Contains("results", StringComparison.OrdinalIgnoreCase)) ?? request.RetrievedChunks.FirstOrDefault();
+                c.ChunkText.Contains("results", StringComparison.OrdinalIgnoreCase));
 
             findings.Add(new LlmFindingDto(
                 "Absolute Guarantee",
@@ -330,7 +329,7 @@ public class LlmValidationService : ILlmValidationService
                 "Replace absolute guarantees with verified qualifiers, such as 'engineered to deliver measurable results' or 'demonstrated in customer case studies'.",
                 evidenceChunk?.ChunkId,
                 evidenceChunk?.PageNumber,
-                evidenceChunk?.ChunkText.Length > 180 ? evidenceChunk.ChunkText.Substring(0, 180) + "..." : evidenceChunk?.ChunkText
+                evidenceChunk != null ? (evidenceChunk.ChunkText.Length > 180 ? evidenceChunk.ChunkText.Substring(0, 180) + "..." : evidenceChunk.ChunkText) : null
             ));
         }
 
@@ -340,7 +339,7 @@ public class LlmValidationService : ILlmValidationService
             var match = Regex.Match(content, @"\b(best(\s+[a-zA-Z]+)?\s+in\s+the\s+world|#1(\s+[a-zA-Z]+)?\s+in\s+the\s+world|superior\s+to\s+all|unbeatable)\b", RegexOptions.IgnoreCase);
             var evidenceChunk = request.RetrievedChunks.FirstOrDefault(c =>
                 c.ChunkText.Contains("best", StringComparison.OrdinalIgnoreCase) ||
-                c.ChunkText.Contains("claim", StringComparison.OrdinalIgnoreCase)) ?? request.RetrievedChunks.FirstOrDefault();
+                c.ChunkText.Contains("claim", StringComparison.OrdinalIgnoreCase));
 
             findings.Add(new LlmFindingDto(
                 "Superlative Claim",
@@ -350,7 +349,7 @@ public class LlmValidationService : ILlmValidationService
                 "Qualify the claim with accredited industry benchmark data or rephrase to 'an award-winning solution'.",
                 evidenceChunk?.ChunkId,
                 evidenceChunk?.PageNumber,
-                evidenceChunk?.ChunkText.Length > 180 ? evidenceChunk.ChunkText.Substring(0, 180) + "..." : evidenceChunk?.ChunkText
+                evidenceChunk != null ? (evidenceChunk.ChunkText.Length > 180 ? evidenceChunk.ChunkText.Substring(0, 180) + "..." : evidenceChunk.ChunkText) : null
             ));
         }
 
@@ -358,15 +357,20 @@ public class LlmValidationService : ILlmValidationService
         if (Regex.IsMatch(content, @"\b(act\s+fast|click\s+now|hurry|insane\s+deal|don't\s+miss\s+out)\b", RegexOptions.IgnoreCase))
         {
             var match = Regex.Match(content, @"\b(act\s+fast|click\s+now|hurry|insane\s+deal|don't\s+miss\s+out)\b", RegexOptions.IgnoreCase);
+            var toneChunk = request.RetrievedChunks.FirstOrDefault(c =>
+                c.ChunkText.Contains("tone", StringComparison.OrdinalIgnoreCase) ||
+                c.ChunkText.Contains("voice", StringComparison.OrdinalIgnoreCase) ||
+                c.ChunkText.Contains("urgency", StringComparison.OrdinalIgnoreCase));
+
             findings.Add(new LlmFindingDto(
                 "Brand Tone Inconsistency",
                 RiskSeverity.Medium,
                 match.Value,
                 "The copy uses high-pressure, transactional urgency language that conflicts with the brand's professional and authoritative tone guidelines.",
                 "Adopt an informative and value-focused call-to-action such as 'Discover how our team can assist' or 'Schedule a personalized consultation'.",
-                request.RetrievedChunks.FirstOrDefault()?.ChunkId,
-                request.RetrievedChunks.FirstOrDefault()?.PageNumber,
-                request.RetrievedChunks.FirstOrDefault()?.ChunkText
+                toneChunk?.ChunkId,
+                toneChunk?.PageNumber,
+                toneChunk?.ChunkText
             ));
         }
 

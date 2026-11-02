@@ -6,19 +6,69 @@
       <p class="section-subtitle">Immutable governance log of all human reviewer decisions permanently recorded in the database</p>
     </div>
 
-    <!-- Filter Buttons -->
-    <div class="header-actions">
-      <div class="btn-group btn-group-sm">
-        <button class="btn" [ngClass]="selectedFilter() === 'ALL' ? 'btn-dark' : 'btn-outline-secondary'"
-                (click)="selectedFilter.set('ALL')">All ({{ history().length }})</button>
-        <button class="btn" [ngClass]="selectedFilter() === 'PENDINGREVIEW' ? 'btn-primary' : 'btn-outline-primary'"
-                (click)="selectedFilter.set('PENDINGREVIEW')">Pending Review</button>
-        <button class="btn" [ngClass]="selectedFilter() === 'APPROVED' ? 'btn-success' : 'btn-outline-success'"
-                (click)="selectedFilter.set('APPROVED')">Approved</button>
-        <button class="btn" [ngClass]="selectedFilter() === 'CHANGESREQUESTED' ? 'btn-warning' : 'btn-outline-warning'"
-                (click)="selectedFilter.set('CHANGESREQUESTED')">Changes Req.</button>
-        <button class="btn" [ngClass]="selectedFilter() === 'REJECTED' ? 'btn-danger' : 'btn-outline-danger'"
-                (click)="selectedFilter.set('REJECTED')">Rejected</button>
+    <!-- Redesigned Professional Status Filter Group -->
+    <div class="header-actions status-filter-action-wrapper">
+      <div class="status-filter-scroll-container">
+        <div class="status-segmented-control" role="tablist" aria-label="Filter review history by status">
+          <button type="button"
+                  class="filter-segment-btn"
+                  [class.active]="selectedFilter() === 'ALL'"
+                  (click)="selectedFilter.set('ALL')"
+                  role="tab"
+                  [attr.aria-selected]="selectedFilter() === 'ALL'"
+                  id="filter-status-all">
+            <span class="filter-label">All</span>
+            <span class="filter-badge">{{ allCount() }}</span>
+          </button>
+
+          <button type="button"
+                  class="filter-segment-btn segment-pending"
+                  [class.active]="selectedFilter() === 'PENDINGREVIEW'"
+                  (click)="selectedFilter.set('PENDINGREVIEW')"
+                  role="tab"
+                  [attr.aria-selected]="selectedFilter() === 'PENDINGREVIEW'"
+                  id="filter-status-pending">
+            <span class="status-dot dot-pending"></span>
+            <span class="filter-label">Pending</span>
+            <span class="filter-badge">{{ pendingCount() }}</span>
+          </button>
+
+          <button type="button"
+                  class="filter-segment-btn segment-approved"
+                  [class.active]="selectedFilter() === 'APPROVED'"
+                  (click)="selectedFilter.set('APPROVED')"
+                  role="tab"
+                  [attr.aria-selected]="selectedFilter() === 'APPROVED'"
+                  id="filter-status-approved">
+            <span class="status-dot dot-approved"></span>
+            <span class="filter-label">Approved</span>
+            <span class="filter-badge">{{ approvedCount() }}</span>
+          </button>
+
+          <button type="button"
+                  class="filter-segment-btn segment-changes"
+                  [class.active]="selectedFilter() === 'CHANGESREQUESTED'"
+                  (click)="selectedFilter.set('CHANGESREQUESTED')"
+                  role="tab"
+                  [attr.aria-selected]="selectedFilter() === 'CHANGESREQUESTED'"
+                  id="filter-status-changes">
+            <span class="status-dot dot-changes"></span>
+            <span class="filter-label">Changes Requested</span>
+            <span class="filter-badge">{{ changesRequestedCount() }}</span>
+          </button>
+
+          <button type="button"
+                  class="filter-segment-btn segment-rejected"
+                  [class.active]="selectedFilter() === 'REJECTED'"
+                  (click)="selectedFilter.set('REJECTED')"
+                  role="tab"
+                  [attr.aria-selected]="selectedFilter() === 'REJECTED'"
+                  id="filter-status-rejected">
+            <span class="status-dot dot-rejected"></span>
+            <span class="filter-label">Rejected</span>
+            <span class="filter-badge">{{ rejectedCount() }}</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -80,7 +130,7 @@
                   'bi-pencil-square me-1': item.decision === 'ChangesRequested',
                   'bi-x-circle-fill me-1': item.decision === 'Rejected'
                 }"></i>
-                {{ item.decision === 'ChangesRequested' ? 'Changes Req.' : (item.decision === 'PendingReview' ? 'Pending Review' : item.decision) }}
+                {{ item.decision === 'ChangesRequested' ? 'Changes Requested' : (item.decision === 'PendingReview' ? 'Pending Review' : item.decision) }}
               </span>
             </td>
             <td>

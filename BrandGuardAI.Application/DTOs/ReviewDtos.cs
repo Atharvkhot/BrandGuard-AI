@@ -35,3 +35,37 @@ public record ReviewHistoryItemDto(
     RiskSeverity? OverallRiskLevel,
     int TotalFindings
 );
+
+public record AcknowledgeFindingsRequest(
+    List<Guid> FindingIds,
+    string? AcknowledgedBy
+);
+
+public record AcknowledgeFindingsResultDto(
+    int AcknowledgedCount,
+    List<Guid> AcknowledgedFindingIds
+);
+
+public record BatchReviewDecisionDto(
+    List<Guid> ContentSubmissionIds,
+    ReviewDecisionType Decision,
+    string ReviewerName,
+    string Comments,
+    bool ConfirmHighRiskApproval = false
+);
+
+public record BatchReviewItemResultDto(
+    Guid ContentSubmissionId,
+    string Title,
+    bool Success,
+    string? ErrorMessage,
+    ReviewDecisionType? Decision
+);
+
+public record BatchReviewResultDto(
+    int TotalProcessed,
+    int Succeeded,
+    int Failed,
+    List<BatchReviewItemResultDto> Results
+);
+

@@ -150,4 +150,155 @@ public class ReviewService : IReviewService
             decision.ReviewedAt
         );
     }
+
+    public async Task<AcknowledgeFindingsResultDto> AcknowledgeFindingsAsync(AcknowledgeFindingsRequest request, CancellationToken cancellationToken = default)
+    {
+        if (request == null || request.FindingIds == null || request.FindingIds.Count == 0)
+        {
+            throw new ArgumentException("At least one finding ID must be provided.", nameof(request.FindingIds));
+        }
+
+        var distinctFindingIds = request.FindingIds.Distinct().ToList();
+        var findings = await _context.ValidationFindings
+            .Where(f => distinctFindingIds.Contains(f.Id))
+            .ToListAsync(cancellationToken);
+
+        if (findings.Count == 0)
+        {
+            return new AcknowledgeFindingsResultDto(0, new List<Guid>());
+        }
+
+        var reviewer = string.IsNullOrWhiteSpace(request.AcknowledgedBy) ? "Reviewer" : request.AcknowledgedBy.Trim();
+        var now = DateTime.UtcNow;
+
+        foreach (var finding in findings)
+        {
+            finding.IsAcknowledged = true;
+            finding.AcknowledgedAt = now;
+            finding.AcknowledgedBy = reviewer;
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Batch acknowledged {Count} findings by reviewer '{Reviewer}'",
+            findings.Count, reviewer);
+
+        return new AcknowledgeFindingsResultDto(
+            findings.Count,
+            findings.Select(f => f.Id).ToList()
+        );
+    }
+
+    public async Task<BatchReviewResultDto> SubmitBatchDecisionsAsync(BatchReviewDecisionDto request, CancellationToken cancellationToken = default)
+    {
+        if (request == null)
+        {
+            throw new ArgumentNullException(nameof(request));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.ReviewerName))
+        {
+            throw new ArgumentException("Reviewer name is required for governance auditability.", nameof(request.ReviewerName));
+        }
+
+        if (request.ContentSubmissionIds == null || request.ContentSubmissionIds.Count == 0)
+        {
+            throw new ArgumentException("At least one submission ID must be provided.", nameof(request.ContentSubmissionIds));
+        }
+
+        if (!Enum.IsDefined(typeof(ReviewDecisionType), request.Decision))
+        {
+            throw new ArgumentException($"Invalid review decision value: {request.Decision}", nameof(request.Decision));
+        }
+
+        var distinctIds = request.ContentSubmissionIds.Distinct().ToList();
+        var submissions = await _context.ContentSubmissions
+            .Include(s => s.ValidationRuns)
+            .Include(s => s.ReviewDecisions)
+            .Where(s => distinctIds.Contains(s.Id))
+            .ToListAsync(cancellationToken);
+
+        var submissionMap = submissions.ToDictionary(s => s.Id);
+        var results = new List<BatchReviewItemResultDto>();
+        var reviewer = request.ReviewerName.Trim();
+        var comments = request.Comments?.Trim() ?? string.Empty;
+        var now = DateTime.UtcNow;
+
+        foreach (var id in distinctIds)
+        {
+            if (!submissionMap.TryGetValue(id, out var submission))
+            {
+                results.Add(new BatchReviewItemResultDto(id, "Unknown", false, $"Submission {id} not found.", null));
+                continue;
+            }
+
+            var latestRun = submission.ValidationRuns.OrderByDescending(r => r.StartedAt).FirstOrDefault();
+
+            // Safety guard: Prevent accidental approval of high-risk content
+            if (request.Decision == ReviewDecisionType.Approved &&
+                latestRun != null &&
+                latestRun.OverallRiskLevel == RiskSeverity.High &&
+                !request.ConfirmHighRiskApproval)
+            {
+                _logger.LogWarning("Blocked automatic approval for high-risk submission {SubmissionId} ('{Title}') - explicit high-risk confirmation override was not provided.",
+                    submission.Id, submission.Title);
+
+                results.Add(new BatchReviewItemResultDto(
+                    submission.Id,
+                    submission.Title,
+                    false,
+                    "Approval blocked: submission contains High Risk findings. Explicit confirmation override is required.",
+                    null
+                ));
+                continue;
+            }
+
+            // Duplicate safety: Check if identical decision was recorded in the last 15 seconds
+            var recentDecision = submission.ReviewDecisions.OrderByDescending(d => d.ReviewedAt).FirstOrDefault();
+            if (recentDecision != null &&
+                recentDecision.Decision == request.Decision &&
+                recentDecision.ReviewerName.Equals(reviewer, StringComparison.OrdinalIgnoreCase) &&
+                now.Subtract(recentDecision.ReviewedAt).TotalSeconds < 15)
+            {
+                _logger.LogInformation("Duplicate review decision detected for submission {SubmissionId} in batch. Preserving existing record.", submission.Id);
+                results.Add(new BatchReviewItemResultDto(submission.Id, submission.Title, true, null, request.Decision));
+                continue;
+            }
+
+            var decision = new ReviewDecision
+            {
+                Id = Guid.NewGuid(),
+                ContentSubmissionId = submission.Id,
+                ValidationRunId = latestRun?.Id,
+                ReviewerName = reviewer,
+                Decision = request.Decision,
+                Comments = comments,
+                ReviewedAt = now
+            };
+
+            submission.Status = request.Decision switch
+            {
+                ReviewDecisionType.Approved => ContentSubmissionStatus.Approved,
+                ReviewDecisionType.ChangesRequested => ContentSubmissionStatus.ChangesRequested,
+                ReviewDecisionType.Rejected => ContentSubmissionStatus.Rejected,
+                _ => ContentSubmissionStatus.PendingReview
+            };
+            submission.UpdatedAt = now;
+
+            _context.ReviewDecisions.Add(decision);
+            results.Add(new BatchReviewItemResultDto(submission.Id, submission.Title, true, null, request.Decision));
+        }
+
+        // Persist all valid changes in an atomic database operation
+        await _context.SaveChangesAsync(cancellationToken);
+
+        int succeeded = results.Count(r => r.Success);
+        int failed = results.Count(r => !r.Success);
+
+        _logger.LogInformation("Batch review completed by '{Reviewer}': {Succeeded} succeeded, {Failed} failed out of {Total} submissions.",
+            reviewer, succeeded, failed, results.Count);
+
+        return new BatchReviewResultDto(results.Count, succeeded, failed, results);
+    }
 }
+
