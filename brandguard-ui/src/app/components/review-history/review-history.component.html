@@ -94,30 +94,30 @@
       <table class="table table-hover align-middle mb-0">
         <thead class="table-light text-muted small text-uppercase">
           <tr>
-            <th class="ps-4">Content & Campaign</th>
-            <th>Reviewer</th>
-            <th>Decision / Status</th>
-            <th>Risk Level</th>
-            <th>Editorial Comments</th>
-            <th>Timestamp</th>
-            <th class="text-end pe-4 col-actions">Actions</th>
+            <th class="ps-4 col-content">Content & Campaign</th>
+            <th class="col-reviewer">Reviewer</th>
+            <th class="col-status">Decision / Status</th>
+            <th class="col-risk">Risk Level</th>
+            <th class="col-comments">Editorial Comments</th>
+            <th class="col-timestamp">Timestamp</th>
+            <th class="text-end pe-4 review-actions-header">Actions</th>
           </tr>
         </thead>
         <tbody class="small">
           <tr *ngFor="let item of filteredHistory()">
-            <td class="ps-4">
-              <div class="fw-bold text-dark">{{ item.contentTitle }}</div>
+            <td class="ps-4 col-content">
+              <div class="fw-bold text-dark campaign-title text-truncate" [title]="item.contentTitle">{{ item.contentTitle }}</div>
               <div class="text-muted small">{{ formatContentType(item.contentType) }}</div>
             </td>
-            <td>
+            <td class="col-reviewer">
               <div class="d-flex align-items-center gap-2">
                 <div class="avatar-circle" [ngClass]="{'bg-secondary': item.decision === 'PendingReview'}">
                   {{ item.reviewerName | slice:0:1 | uppercase }}
                 </div>
-                <span class="fw-semibold text-dark">{{ item.reviewerName }}</span>
+                <span class="fw-semibold text-dark text-truncate" [title]="item.reviewerName">{{ item.reviewerName }}</span>
               </div>
             </td>
-            <td>
+            <td class="col-status">
               <span class="badge" [ngClass]="{
                 'bg-info-subtle text-info border border-info-subtle': item.decision === 'PendingReview',
                 'bg-success-subtle text-success border border-success-subtle': item.decision === 'Approved',
@@ -133,7 +133,7 @@
                 {{ item.decision === 'ChangesRequested' ? 'Changes Requested' : (item.decision === 'PendingReview' ? 'Pending Review' : item.decision) }}
               </span>
             </td>
-            <td>
+            <td class="col-risk">
               <span *ngIf="item.overallRiskLevel" class="badge-severity" [ngClass]="{
                 'severity-high': item.overallRiskLevel === 'High',
                 'severity-medium': item.overallRiskLevel === 'Medium',
@@ -143,25 +143,25 @@
               </span>
               <span *ngIf="!item.overallRiskLevel" class="text-muted small">—</span>
             </td>
-            <td class="small text-dark" style="max-width: 280px;">
-              <div class="text-truncate" [title]="item.comments">{{ item.comments || '—' }}</div>
+            <td class="col-comments small text-dark">
+              <div class="comments-truncate text-truncate" [title]="item.comments">{{ item.comments || '—' }}</div>
             </td>
-            <td class="small text-muted font-monospace">
+            <td class="col-timestamp small text-muted font-monospace">
               {{ item.reviewedAt | date:'medium' }}
             </td>
-            <td class="text-end pe-4 col-actions">
-              <div class="table-row-actions">
+            <td class="text-end pe-4 review-actions-cell">
+              <div class="review-actions">
                 <a *ngIf="item.decision === 'PendingReview'"
                    [routerLink]="['/review', item.contentSubmissionId]"
-                   class="btn-table-action btn-table-review"
-                   id="btn-table-review-{{ item.contentSubmissionId }}"
+                   class="review-action review-action-primary"
+                   id="btn-review-{{ item.contentSubmissionId }}"
                    title="Perform Human Review">
                   <i class="bi bi-person-check"></i>
                   <span>Review</span>
                 </a>
                 <a [routerLink]="['/results', item.contentSubmissionId]"
-                   class="btn-table-action btn-table-view"
-                   id="btn-table-view-{{ item.contentSubmissionId }}"
+                   class="review-action review-action-secondary"
+                   id="btn-view-{{ item.contentSubmissionId }}"
                    title="View Validation Run">
                   <i class="bi bi-eye"></i>
                   <span>View Run</span>
